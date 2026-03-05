@@ -805,7 +805,7 @@ def generate_short_term_graph(metric_key, history, today):
     plt.tight_layout()
     return fig
 
-def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data):
+def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics):
     sectors = {
         'Technology': {'etf': 'XLK', 'stocks': ['AAPL', 'MSFT', 'NVDA'], 'tilt': 'Neutral'},
         'Industrials': {'etf': 'XLI', 'stocks': ['GE', 'CAT', 'UBER'], 'tilt': 'Neutral'},
@@ -895,7 +895,7 @@ def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_s
     tilt_df['Absolute Allocation'] = (tilt_df['Recommended %'].str.rstrip('%').astype(float) / 100 * portfolio_size).apply(lambda x: f'${x:,.0f}')
 
     return tilt_df, sectors, commodities
-
+    
 def plot_sector_chart(etf_ticker, period='1y'):
     try:
         hist = yf.Ticker(etf_ticker).history(period=period)['Close']
@@ -1083,26 +1083,34 @@ if st.session_state.bias_calculated:
     portfolio_size = st.number_input("Portfolio Size ($)", min_value=1000, value=100000, step=1000)
 
     if st.button("Generate Sector Tilt Recommendations", type="primary"):
-        with st.spinner("Calculating sector tilts..."):
-            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data)
-            st.table(tilt_df)
+    with st.spinner("Calculating sector tilts..."):
+        tilt_df, sectors, commodities = generate_sector_tilt(
+            st.session_state.bias,
+            st.session_state.score,
+            risk_level,
+            preferred_sectors,
+            portfolio_size,
+            st.session_state.data,
+            st.session_state.metrics   # ← this line was missing
+        )
+        st.table(tilt_df)
 
-            st.subheader("Sector Performance Charts")
-            cols = st.columns(3)
-            for i, (sector, info) in enumerate(sectors.items()):
-                with cols[i % 3]:
-                    fig = plot_sector_chart(info['etf'])
-                    if fig:
-                        st.pyplot(fig)
+        st.subheader("Sector Performance Charts")
+        cols = st.columns(3)
+        for i, (sector, info) in enumerate(sectors.items()):
+            with cols[i % 3]:
+                fig = plot_sector_chart(info['etf'])
+                if fig:
+                    st.pyplot(fig)
 
-            st.subheader("Commodity Performance Charts")
-            cols = st.columns(3)
-            for i, (comm, info) in enumerate(commodities.items()):
-                with cols[i % 3]:
-                    fig = plot_commodity_chart(info['ticker'])
-                    if fig:
-                        st.pyplot(fig)
+        st.subheader("Commodity Performance Charts")
+        cols = st.columns(3)
+        for i, (comm, info) in enumerate(commodities.items()):
+            with cols[i % 3]:
+                fig = plot_commodity_chart(info['ticker'])
+                if fig:
+                    st.pyplot(fig)
 
-            # CSV Download
-            csv = tilt_df.to_csv(index=False).encode('utf-8')
-            st.download_button("Download Sector Tilt CSV", data=csv, file_name="sector_tilt.csv", mime="text/csv")
+        # CSV Download
+        csv = tilt_df.to_csv(index=False).encode('utf-8')
+        st.download_button("Download Sector Tilt CSV", data=csv, file_name="sector_tilt.csv", mime="text/csv")
