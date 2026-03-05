@@ -1082,7 +1082,7 @@ if st.session_state.bias_calculated:
     preferred_sectors = st.multiselect("Preferred Sectors", options=['Technology', 'Industrials', 'Financials', 'Consumer Discretionary', 'Utilities', 'Healthcare', 'Energy', 'Materials', 'Consumer Staples', 'Real Estate', 'Communication Services'])
     portfolio_size = st.number_input("Portfolio Size ($)", min_value=1000, value=100000, step=1000)
 
-    if st.button("Generate Sector Tilt Recommendations", type="primary"):
+if st.button("Generate Sector Tilt Recommendations", type="primary"):
     with st.spinner("Calculating sector tilts..."):
         tilt_df, sectors, commodities = generate_sector_tilt(
             st.session_state.bias,
