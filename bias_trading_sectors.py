@@ -792,7 +792,7 @@ def generate_short_term_graph(metric_key, history, today):
         ax.set_title('STOXX 600 – Last 3 Months')
     
     elif metric_key in history:
-        short_data = history[metric_key][history[metric_key].index >= short]
+        short_data = history[metric_key][history['metric_key'].index >= short]
         if not short_data.empty:
             short_data.plot(ax=ax, color='orange')
         ax.set_title(f"{metric_key.replace('_', ' ').upper()} – Last 3 Months")
@@ -926,6 +926,28 @@ def generate_html_summary(tailwinds, headwinds, neutrals, bias, data, history, m
     </body></html>
     """
     return html
+
+def plot_sector_chart(etf_ticker, period='1y'):
+    try:
+        hist = yf.Ticker(etf_ticker).history(period=period)['Close']
+        fig, ax = plt.subplots(figsize=(6, 4))
+        hist.plot(ax=ax, linewidth=2)
+        ax.set_title(f'{etf_ticker} Performance ({period})')
+        plt.tight_layout()
+        return fig
+    except:
+        return None
+
+def plot_commodity_chart(ticker, period='1y'):
+    try:
+        hist = yf.Ticker(ticker).history(period=period)['Close']
+        fig, ax = plt.subplots(figsize=(6, 4))
+        hist.plot(ax=ax, linewidth=2)
+        ax.set_title(f'{ticker} Performance ({period})')
+        plt.tight_layout()
+        return fig
+    except:
+        return None
 
 # --- STREAMLIT ---
 st.set_page_config(page_title="Macro Portfolio Bias & Sector Tilt", layout="wide")
