@@ -804,96 +804,6 @@ def generate_short_term_graph(metric_key, history, today):
     plt.tight_layout()
     return fig
 
-def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size):
-    sectors = {
-        'Technology': {'etf': 'XLK', 'stocks': ['AAPL', 'MSFT', 'NVDA'], 'tilt': 'Overweight' if 'Technology' in preferred_sectors else 'Neutral'},
-        'Industrials': {'etf': 'XLI', 'stocks': ['GE', 'CAT', 'UBER'], 'tilt': 'Overweight' if 'Industrials' in preferred_sectors else 'Neutral'},
-        'Financials': {'etf': 'XLF', 'stocks': ['JPM', 'BAC', 'WFC'], 'tilt': 'Neutral'},
-        'Consumer Discretionary': {'etf': 'XLY', 'stocks': ['AMZN', 'TSLA', 'HD'], 'tilt': 'Overweight' if 'Consumer Discretionary' in preferred_sectors else 'Neutral'},
-        'Utilities': {'etf': 'XLU', 'stocks': ['NEE', 'SO', 'DUK'], 'tilt': 'Underweight' if 'Utilities' in preferred_sectors else 'Underweight'},
-        'Healthcare': {'etf': 'XLV', 'stocks': ['JNJ', 'PFE', 'MRK'], 'tilt': 'Neutral'},
-        'Energy': {'etf': 'XLE', 'stocks': ['XOM', 'CVX', 'SLB'], 'tilt': 'Underweight'},
-        'Materials': {'etf': 'XLB', 'stocks': ['LIN', 'SHW', 'FCX'], 'tilt': 'Overweight' if 'Materials' in preferred_sectors else 'Neutral'},
-        'Consumer Staples': {'etf': 'XLP', 'stocks': ['PG', 'KO', 'PEP'], 'tilt': 'Underweight'},
-        'Real Estate': {'etf': 'XLRE', 'stocks': ['AMT', 'PLD', 'CCI'], 'tilt': 'Neutral'},
-        'Communication Services': {'etf': 'XLC', 'stocks': ['GOOGL', 'META', 'NFLX'], 'tilt': 'Overweight' if 'Communication Services' in preferred_sectors else 'Neutral'},
-    }
-
-    commodities = {
-        'Oil (WTI)': {'ticker': 'CL=F'},
-        'Gold': {'ticker': 'GC=F'},
-        'Copper': {'ticker': 'HG=F'},
-        'Lumber': {'ticker': 'LBS=F'},
-        'Silver': {'ticker': 'SI=F'},
-        'Coffee': {'ticker': 'KC=F'},
-        'Cocoa': {'ticker': 'CC=F'},
-        'Aluminum': {'ticker': 'ALI=F'},
-        'Lithium': {'ticker': 'LTHM'},
-    }
-
-    # Adjust tilts based on bias and score
-    if 'Long' in bias:
-        for sector in ['Technology', 'Industrials', 'Financials', 'Consumer Discretionary', 'Materials', 'Communication Services']:
-            sectors[sector]['tilt'] = 'Overweight'
-        for sector in ['Utilities', 'Consumer Staples', 'Energy']:
-            sectors[sector]['tilt'] = 'Underweight'
-    elif 'Short' in bias:
-        for sector in ['Technology', 'Industrials', 'Financials', 'Consumer Discretionary', 'Materials', 'Communication Services']:
-            sectors[sector]['tilt'] = 'Underweight'
-        for sector in ['Utilities', 'Consumer Staples', 'Healthcare']:
-            sectors[sector]['tilt'] = 'Overweight'
-    # Neutral remains balanced
-
-    # Risk adjustment
-    base_alloc = 100 / len(sectors)
-    if risk_level == 'Low':
-        base_alloc *= 0.8  # More conservative
-    elif risk_level == 'High':
-        base_alloc *= 1.2  # More aggressive
-
-    tilt_df = pd.DataFrame(columns=['Sector', 'Tilt', 'Recommended %', 'Rationale', 'ETF', 'Example Stocks'])
-    for sector, info in sectors.items():
-        alloc = base_alloc
-        if info['tilt'] == 'Overweight':
-            alloc *= 1.5
-            rationale = 'Strong GDP tailwinds (e.g., expansion signals)'
-        elif info['tilt'] == 'Underweight':
-            alloc *= 0.5
-            rationale = 'Defensive; less favored in current regime'
-        else:
-            rationale = 'Balanced exposure'
-        tilt_df = pd.concat([tilt_df, pd.DataFrame({'Sector': [sector], 'Tilt': [info['tilt']], 'Recommended %': [f'{alloc:.1f}%'], 'Rationale': [rationale], 'ETF': [info['etf']], 'Example Stocks': [', '.join(info['stocks'])]})], ignore_index=True)
-
-    # Normalize to 100%
-    tilt_df['Recommended %'] = tilt_df['Recommended %'].str.rstrip('%').astype(float)
-    tilt_df['Recommended %'] = (tilt_df['Recommended %'] / tilt_df['Recommended %'].sum()) * 100
-    tilt_df['Recommended %'] = tilt_df['Recommended %'].apply(lambda x: f'{x:.1f}%')
-    tilt_df['Absolute Allocation'] = (tilt_df['Recommended %'].str.rstrip('%').astype(float) / 100 * portfolio_size).apply(lambda x: f'${x:,.0f}')
-
-    return tilt_df, sectors, commodities
-
-def plot_sector_chart(etf_ticker, period='1y'):
-    try:
-        hist = yf.Ticker(etf_ticker).history(period=period)['Close']
-        fig, ax = plt.subplots(figsize=(6, 4))
-        hist.plot(ax=ax, linewidth=2)
-        ax.set_title(f'{etf_ticker} Performance ({period})')
-        plt.tight_layout()
-        return fig
-    except:
-        return None
-
-def plot_commodity_chart(ticker, period='1y'):
-    try:
-        hist = yf.Ticker(ticker).history(period=period)['Close']
-        fig, ax = plt.subplots(figsize=(6, 4))
-        hist.plot(ax=ax, linewidth=2)
-        ax.set_title(f'{ticker} Performance ({period})')
-        plt.tight_layout()
-        return fig
-    except:
-        return None
-
 def generate_html_summary(tailwinds, headwinds, neutrals, bias, data, history, metrics, today, score):
     def build_section(items_list):
         html_parts = []
@@ -1060,7 +970,7 @@ if st.session_state.bias_calculated:
 
     if st.button("Generate Sector Tilt Recommendations", type="primary"):
         with st.spinner("Calculating sector tilts..."):
-            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size)
+            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data)
             st.table(tilt_df)
 
             st.subheader("Sector Performance Charts")
