@@ -792,10 +792,11 @@ def generate_short_term_graph(metric_key, history, today):
         ax.set_title('STOXX 600 – Last 3 Months')
     
     elif metric_key in history:
-        short_data = history[metric_key][history[metric_key].index >= short]
-        if not short_data.empty:
-            short_data.plot(ax=ax, color='orange')
-        ax.set_title(f"{metric_key.replace('_', ' ').upper()} – Last 3 Months")
+        if metric_key in history:
+            short_data = history[metric_key][history[metric_key].index >= short]
+            if not short_data.empty:
+                short_data.plot(ax=ax, color='orange')
+            ax.set_title(f"{metric_key.replace('_', ' ').upper()} – Last 3 Months")
     
     else:
         plt.close(fig)
@@ -803,6 +804,119 @@ def generate_short_term_graph(metric_key, history, today):
     
     plt.tight_layout()
     return fig
+
+def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data):
+    sectors = {
+        'Technology': {'etf': 'XLK', 'stocks': ['AAPL', 'MSFT', 'NVDA'], 'tilt': 'Neutral'},
+        'Industrials': {'etf': 'XLI', 'stocks': ['GE', 'CAT', 'UBER'], 'tilt': 'Neutral'},
+        'Financials': {'etf': 'XLF', 'stocks': ['JPM', 'BAC', 'WFC'], 'tilt': 'Neutral'},
+        'Consumer Discretionary': {'etf': 'XLY', 'stocks': ['AMZN', 'TSLA', 'HD'], 'tilt': 'Neutral'},
+        'Utilities': {'etf': 'XLU', 'stocks': ['NEE', 'SO', 'DUK'], 'tilt': 'Neutral'},
+        'Healthcare': {'etf': 'XLV', 'stocks': ['JNJ', 'PFE', 'MRK'], 'tilt': 'Neutral'},
+        'Energy': {'etf': 'XLE', 'stocks': ['XOM', 'CVX', 'SLB'], 'tilt': 'Neutral'},
+        'Materials': {'etf': 'XLB', 'stocks': ['LIN', 'SHW', 'FCX'], 'tilt': 'Neutral'},
+        'Consumer Staples': {'etf': 'XLP', 'stocks': ['PG', 'KO', 'PEP'], 'tilt': 'Neutral'},
+        'Real Estate': {'etf': 'XLRE', 'stocks': ['AMT', 'PLD', 'CCI'], 'tilt': 'Neutral'},
+        'Communication Services': {'etf': 'XLC', 'stocks': ['GOOGL', 'META', 'NFLX'], 'tilt': 'Neutral'},
+    }
+
+    commodities = {
+        'Oil (WTI)': {'ticker': 'CL=F'},
+        'Gold': {'ticker': 'GC=F'},
+        'Copper': {'ticker': 'HG=F'},
+        'Lumber': {'ticker': 'LBS=F'},
+        'Silver': {'ticker': 'SI=F'},
+        'Coffee': {'ticker': 'KC=F'},
+        'Cocoa': {'ticker': 'CC=F'},
+        'Aluminum': {'ticker': 'ALI=F'},
+        'Lithium': {'ticker': 'LTHM'},
+    }
+
+    # Base tilts based on bias
+    cyclicals = ['Technology', 'Industrials', 'Financials', 'Consumer Discretionary', 'Materials', 'Communication Services', 'Energy']
+    defensives = ['Utilities', 'Consumer Staples', 'Healthcare', 'Real Estate']
+
+    if 'Long' in bias:
+        for s in cyclicals:
+            sectors[s]['tilt'] = 'Overweight'
+        for s in defensives:
+            sectors[s]['tilt'] = 'Underweight'
+    elif 'Short' in bias:
+        for s in cyclicals:
+            sectors[s]['tilt'] = 'Underweight'
+        for s in defensives:
+            sectors[s]['tilt'] = 'Overweight'
+
+    # Dynamic tweaks based on Step 1 signals
+    base_weight = 100 / len(sectors)
+    weights = {s: base_weight for s in sectors}
+    if data['ism_manufacturing'] > 50:
+        weights['Industrials'] *= 1.2
+        weights['Materials'] *= 1.2
+    if data['ism_services'] > 50:
+        weights['Consumer Discretionary'] *= 1.2
+        weights['Communication Services'] *= 1.2
+    if data['vix'] < 15:
+        weights['Technology'] *= 1.3
+    if metrics.get('yield_curve_10_2', 0) > 0:
+        weights['Financials'] *= 1.2
+
+    # Add momentum: Fetch 1-month return, boost if positive
+    for s in sectors:
+        etf_hist = yf.Ticker(sectors[s]['etf']).history(period='1mo')['Close']
+        if len(etf_hist) > 1:
+            month_return = (etf_hist.iloc[-1] - etf_hist.iloc[0]) / etf_hist.iloc[0]
+            if month_return > 0 and sectors[s]['tilt'] == 'Overweight':
+                weights[s] *= 1.1
+
+    # Normalize, cap max 25%, min 3%
+    total = sum(weights.values())
+    weights = {s: min(max(w / total * 100, 3), 25) for s, w in weights.items()}
+    total = sum(weights.values())
+    weights = {s: w / total * 100 for s, w in weights.items()}
+
+    tilt_df = pd.DataFrame(columns=['Sector', 'Tilt', 'Recommended %', 'Rationale', 'ETF', 'Example Stocks'])
+    for s, info in sectors.items():
+        alloc = weights[s]
+        rationale = 'Balanced exposure'
+        if info['tilt'] == 'Overweight':
+            rationale = 'Strong GDP tailwinds (e.g., expansion signals)'
+        elif info['tilt'] == 'Underweight':
+            rationale = 'Defensive; less favored in current regime'
+        tilt_df = pd.concat([tilt_df, pd.DataFrame({
+            'Sector': [s],
+            'Tilt': [info['tilt']],
+            'Recommended %': [f'{alloc:.1f}%'],
+            'Rationale': [rationale],
+            'ETF': [info['etf']],
+            'Example Stocks': [', '.join(info['stocks'])]
+        })], ignore_index=True)
+
+    tilt_df['Absolute Allocation'] = (tilt_df['Recommended %'].str.rstrip('%').astype(float) / 100 * portfolio_size).apply(lambda x: f'${x:,.0f}')
+
+    return tilt_df, sectors, commodities
+
+def plot_sector_chart(etf_ticker, period='1y'):
+    try:
+        hist = yf.Ticker(etf_ticker).history(period=period)['Close']
+        fig, ax = plt.subplots(figsize=(6, 4))
+        hist.plot(ax=ax, linewidth=2)
+        ax.set_title(f'{etf_ticker} Performance ({period})')
+        plt.tight_layout()
+        return fig
+    except:
+        return None
+
+def plot_commodity_chart(ticker, period='1y'):
+    try:
+        hist = yf.Ticker(ticker).history(period=period)['Close']
+        fig, ax = plt.subplots(figsize=(6, 4))
+        hist.plot(ax=ax, linewidth=2)
+        ax.set_title(f'{ticker} Performance ({period})')
+        plt.tight_layout()
+        return fig
+    except:
+        return None
 
 def generate_html_summary(tailwinds, headwinds, neutrals, bias, data, history, metrics, today, score):
     def build_section(items_list):
@@ -926,28 +1040,6 @@ def generate_html_summary(tailwinds, headwinds, neutrals, bias, data, history, m
     </body></html>
     """
     return html
-
-def plot_sector_chart(etf_ticker, period='1y'):
-    try:
-        hist = yf.Ticker(etf_ticker).history(period=period)['Close']
-        fig, ax = plt.subplots(figsize=(6, 4))
-        hist.plot(ax=ax, linewidth=2)
-        ax.set_title(f'{etf_ticker} Performance ({period})')
-        plt.tight_layout()
-        return fig
-    except:
-        return None
-
-def plot_commodity_chart(ticker, period='1y'):
-    try:
-        hist = yf.Ticker(ticker).history(period=period)['Close']
-        fig, ax = plt.subplots(figsize=(6, 4))
-        hist.plot(ax=ax, linewidth=2)
-        ax.set_title(f'{ticker} Performance ({period})')
-        plt.tight_layout()
-        return fig
-    except:
-        return None
 
 # --- STREAMLIT ---
 st.set_page_config(page_title="Macro Portfolio Bias & Sector Tilt", layout="wide")
