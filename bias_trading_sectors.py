@@ -792,7 +792,7 @@ def generate_short_term_graph(metric_key, history, today):
         ax.set_title('STOXX 600 – Last 3 Months')
     
     elif metric_key in history:
-        short_data = history[metric_key][history['metric_key'].index >= short]
+        short_data = history[metric_key][history[metric_key].index >= short]
         if not short_data.empty:
             short_data.plot(ax=ax, color='orange')
         ax.set_title(f"{metric_key.replace('_', ' ').upper()} – Last 3 Months")
