@@ -24,14 +24,15 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     return macd, sig, hist
 
 @st.cache_data(ttl=3600)
-def fetch_data():
+def fetch_data(as_of_date=datetime.now()):
     data = {}
     history = {}
-    today = datetime.now()
+    today = as_of_date
 
     def safe_get_series(series_id, default_value=0, default_history=None):
         try:
             series = fred.get_series(series_id)
+            series = series[series.index <= today]
             if series is None or series.empty:
                 raise ValueError
             return float(series.iloc[-1]), series
@@ -70,13 +71,15 @@ def fetch_data():
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
                 series = pd.Series(np.linspace(current_val - 5, current_val + 3, num_months), index=date_range)
-                return current_val, series
+                series = series[series.index <= today]
+                return float(series.iloc[-1]), series
             elif indicator == 'eesi':
                 match = re.search(r'to (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
                 series = pd.Series(np.linspace(current_val - 8, current_val + 4, num_months), index=date_range)
-                return current_val, series
+                series = series[series.index <= today]
+                return float(series.iloc[-1]), series
 
             tables = soup.find_all('table')
             table = None
@@ -102,6 +105,7 @@ def fetch_data():
                     except:
                         continue
             series = pd.Series(values, index=dates).sort_index()
+            series = series[series.index <= today]
             series = series[-num_months:]
             return float(series.iloc[-1]), series
 
@@ -126,27 +130,26 @@ def fetch_data():
     data['m1'], history['m1'] = safe_get_series('M1SL', 19100)
     data['m2'], history['m2'] = safe_get_series('M2SL', 22400)
 
-    def get_yf_data(ticker, default_val, default_std):
+    def get_yf_data(ticker, default_val, default_std, period='1y'):
         try:
-            hist = yf.Ticker(ticker).history(period='1y')['Close']
+            days = 365 if period == '1y' else 1825 if period == '5y' else 90
+            start = today - timedelta(days=days)
+            hist = yf.Ticker(ticker).history(start=start, end=today)['Close']
             hist.index = hist.index.tz_localize(None)
             return float(hist.iloc[-1]), hist
         except:
-            num_days = 365
+            num_days = days
             date_range = pd.date_range(end=today, periods=num_days)
             return default_val, pd.Series(np.random.normal(default_val, default_std, num_days), index=date_range)
 
-    data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5)
-    data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10)
+    data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5, '1y')
+    data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10, '1y')
 
     try:
-        sp_ticker = yf.Ticker('^GSPC')
-        sp = sp_ticker.history(period='1y')['Close']
-        sp.index = sp.index.tz_localize(None)
+        sp = get_yf_data('^GSPC', 5000, 500, '1y')[1]
         data['sp_lagging'] = 'UP' if sp.iloc[-1] > sp.iloc[0] else 'DOWN'
         history['sp500'] = sp
-        sp_long = sp_ticker.history(period='5y')['Close']
-        sp_long.index = sp_long.index.tz_localize(None)
+        sp_long = get_yf_data('^GSPC', 5000, 500, '5y')[1]
         history['sp500_long'] = sp_long
     except:
         data['sp_lagging'] = 'UP'
@@ -154,12 +157,10 @@ def fetch_data():
         history['sp500_long'] = pd.Series(np.random.normal(5000, 500, 1825), index=pd.date_range(end=today, periods=1825))
 
     try:
-        stoxx = yf.Ticker('^STOXX').history(period='1y')['Close']
-        stoxx.index = stoxx.index.tz_localize(None)
+        stoxx = get_yf_data('^STOXX', 500, 50, '1y')[1]
         data['stoxx_lagging'] = 'UP' if stoxx.iloc[-1] > stoxx.iloc[0] else 'DOWN'
         history['stoxx600'] = stoxx
-        stoxx_long = yf.Ticker('^STOXX').history(period='5y')['Close']
-        stoxx_long.index = stoxx_long.index.tz_localize(None)
+        stoxx_long = get_yf_data('^STOXX', 500, 50, '5y')[1]
         history['stoxx600_long'] = stoxx_long
     except:
         data['stoxx_lagging'] = 'UP'
@@ -168,6 +169,7 @@ def fetch_data():
 
     try:
         core = fred.get_series('CPILFESL')
+        core = core[core.index <= today]
         data['core_cpi_yoy'] = ((core.iloc[-1] / core.iloc[-13]) - 1) * 100 if len(core) > 13 else 2.5
         history['core_cpi'] = core
     except:
@@ -949,6 +951,68 @@ def plot_commodity_chart(ticker, period='1y'):
     except:
         return None
 
+def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics):
+    all_sectors = {
+        'Technology': {'etf': 'XLK', 'type': 'cyclical'},
+        'Industrials': {'etf': 'XLI', 'type': 'cyclical'},
+        'Financials': {'etf': 'XLF', 'type': 'cyclical'},
+        'Consumer Discretionary': {'etf': 'XLY', 'type': 'cyclical'},
+        'Materials': {'etf': 'XLB', 'type': 'cyclical'},
+        'Energy': {'etf': 'XLE', 'type': 'cyclical'},
+        'Healthcare': {'etf': 'XLV', 'type': 'defensive'},
+        'Utilities': {'etf': 'XLU', 'type': 'defensive'},
+        'Consumer Staples': {'etf': 'XLP', 'type': 'defensive'},
+        'Real Estate': {'etf': 'XLRE', 'type': 'defensive'},
+        'Communication Services': {'etf': 'XLC', 'type': 'mixed'},
+    }
+
+    all_commodities = {
+        'Gold': {'ticker': 'GLD'},
+        'Oil': {'ticker': 'USO'},
+        'Silver': {'ticker': 'SLV'},
+        'Copper': {'ticker': 'CPER'},
+    }
+
+    # Calculate 3m returns for hot/cold
+    performance = {}
+    for sector, info in all_sectors.items():
+        hist = yf.Ticker(info['etf']).history(period='3mo')['Close']
+        if len(hist) > 1:
+            ret = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
+        else:
+            ret = 0
+        performance[sector] = ret
+
+    sorted_sectors = sorted(performance, key=performance.get, reverse=True)
+    hot = sorted_sectors[:len(sorted_sectors)//2]
+    cold = sorted_sectors[len(sorted_sectors)//2:]
+
+    # Recommendations
+    if 'Long' in bias:
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:3] or sorted_sectors[:3]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:2] or sorted_sectors[-2:]
+        long_alloc = portfolio_size * 0.6 / len(longs) if len(longs) > 0 else 0
+        short_alloc = portfolio_size * 0.4 / len(shorts) if len(shorts) > 0 else 0
+    elif 'Short' in bias:
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:2] or sorted_sectors[:2]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:3] or sorted_sectors[-3:]
+        long_alloc = portfolio_size * 0.4 / len(longs) if len(longs) > 0 else 0
+        short_alloc = portfolio_size * 0.6 / len(shorts) if len(shorts) > 0 else 0
+    else:
+        longs = sorted_sectors[:3]
+        shorts = sorted_sectors[-3:]
+        long_alloc = portfolio_size * 0.5 / len(longs) if len(longs) > 0 else 0
+        short_alloc = portfolio_size * 0.5 / len(shorts) if len(shorts) > 0 else 0
+
+    tilt_df = pd.DataFrame({
+        'Type': ['Long'] * len(longs) + ['Short'] * len(shorts),
+        'Sector': longs + shorts,
+        'ETF': [all_sectors[s]['etf'] for s in longs + shorts],
+        'Allocation ($)': [long_alloc] * len(longs) + [short_alloc] * len(shorts)
+    })
+
+    return tilt_df, all_sectors, all_commodities
+
 # --- STREAMLIT ---
 st.set_page_config(page_title="Macro Portfolio Bias & Sector Tilt", layout="wide")
 st.title("Portfolio Bias Analysis & Sector Tilt Dashboard")
@@ -996,20 +1060,24 @@ if st.session_state.bias_calculated:
             st.table(tilt_df)
 
             st.subheader("Sector Performance Charts")
-            cols = st.columns(3)
-            for i, (sector, info) in enumerate(sectors.items()):
-                with cols[i % 3]:
-                    fig = plot_sector_chart(info['etf'])
-                    if fig:
-                        st.pyplot(fig)
+            for sector, info in sectors.items():
+                st.subheader(f"{sector} - {info['etf']}")
+                cols = st.columns(3)
+                for i, period in enumerate(['5y', '1y', '3mo']):
+                    with cols[i]:
+                        fig = plot_sector_chart(info['etf'], period)
+                        if fig:
+                            st.pyplot(fig)
 
             st.subheader("Commodity Performance Charts")
-            cols = st.columns(3)
-            for i, (comm, info) in enumerate(commodities.items()):
-                with cols[i % 3]:
-                    fig = plot_commodity_chart(info['ticker'])
-                    if fig:
-                        st.pyplot(fig)
+            for comm, info in commodities.items():
+                st.subheader(f"{comm} - {info['ticker']}")
+                cols = st.columns(3)
+                for i, period in enumerate(['5y', '1y', '3mo']):
+                    with cols[i]:
+                        fig = plot_commodity_chart(info['ticker'], period)
+                        if fig:
+                            st.pyplot(fig)
 
             # CSV Download
             csv = tilt_df.to_csv(index=False).encode('utf-8')
