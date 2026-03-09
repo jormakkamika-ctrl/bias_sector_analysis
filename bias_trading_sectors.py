@@ -69,13 +69,13 @@ def fetch_data():
                 match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
-                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)  # Changed to random to avoid straight line
+                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)
                 return current_val, series
             elif indicator == 'eesi':
-                match = re.search(r'is (\d+\.?\d*)', text)  # Updated regex based on current page content
+                match = re.search(r'points to (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
-                series = pd.Series(np.random.normal(current_val, 3, num_months), index=date_range)  # Changed to random to avoid straight line
+                series = pd.Series(np.random.normal(current_val, 3, num_months), index=date_range)
                 return current_val, series
 
             tables = soup.find_all('table')
@@ -170,7 +170,7 @@ def fetch_data():
         history['core_cpi'] = core
     except:
         data['core_cpi_yoy'] = 2.5
-        history['core_cpi'] = pd.Series(np.random.normal(2.5, 0.5, 12), index=pd.date_range(end=today, periods=12, freq='ME'))
+        history['core_cpi'] = pd.Series(np.random.normal(2.5, 0.5, 36), index=pd.date_range(end=today, periods=36, freq='ME'))  # Increased to 36
 
     return data, history, today
 
@@ -484,8 +484,8 @@ def calculate_metrics(data, history, today):
 
     # 17. S&P 9-6m Return
     if len(history['sp500']) > 200:
-        idx_9m = max(0, len(history['sp500']) - 189)
-        idx_6m = max(0, len(history['sp500']) - 126)
+        idx_9m = max(0, len(history['sp500']) -189)
+        idx_6m = max(0, len(history['sp500']) -126)
         price_9m = history['sp500'].iloc[idx_9m]
         price_6m = history['sp500'].iloc[idx_6m]
         sp_96_return = (price_6m - price_9m) / price_9m * 100
@@ -576,8 +576,8 @@ def calculate_metrics(data, history, today):
 
     # STOXX 600 9-6m
     if len(history['stoxx600']) > 200:
-        idx_9m = max(0, len(history['stoxx600']) - 189)
-        idx_6m = max(0, len(history['stoxx600']) - 126)
+        idx_9m = max(0, len(history['stoxx600']) -189)
+        idx_6m = max(0, len(history['stoxx600']) -126)
         price_9m = history['stoxx600'].iloc[idx_9m]
         price_6m = history['stoxx600'].iloc[idx_6m]
         stoxx_96_return = (price_6m - price_9m) / price_9m * 100
@@ -784,6 +784,9 @@ def generate_graph(metric_key, data, history, metrics, today):
     else:
         ax.text(0.5, 0.5, 'No data available', ha='center')
 
+    if len(series) == 1:
+        ax.scatter(series.index, series.values, color='red')
+
     plt.tight_layout()
     return fig
 
@@ -871,6 +874,9 @@ def generate_short_term_graph(metric_key, history, today):
         series.plot(ax=ax, linewidth=2)
     else:
         ax.text(0.5, 0.5, 'No data available', ha='center')
+
+    if len(series) == 1:
+        ax.scatter(series.index, series.values, color='red')
 
     plt.tight_layout()
     return fig
