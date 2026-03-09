@@ -46,11 +46,11 @@ def fetch_data():
         try:
             headers = {'User-Agent': 'Mozilla/5.0'}
             if indicator == 'business confidence':
-                url = 'https://ycharts.com/indicators/us_pmi'
+                return safe_get_series('NAPM', 52.6)
             elif indicator == 'non manufacturing pmi':
-                url = 'https://ycharts.com/indicators/us_ism_non_manufacturing_index'
+                return safe_get_series('NMFPMI', 53.8)
             elif indicator == 'nfib business optimism index':
-                url = 'https://ycharts.com/indicators/small_business_optimism_index'
+                return safe_get_series('NFIBSBIO', 99.3)
             elif indicator == 'sbi':
                 url = 'https://www.uschamber.com/sbindex/summary'
             elif indicator == 'eesi':
@@ -134,7 +134,7 @@ def fetch_data():
         except:
             num_days = 365 if period == '1y' else 1825 if period == '5y' else 90
             date_range = pd.date_range(end=today, periods=num_days)
-            return default_val, pd.Series(np.random.normal(default_val, default_std, num_days), index=date_range)
+            return default_val, pd.Series(np.random.normal(default_value, default_std, num_days), index=date_range)
 
     data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5, '1y')
     data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10, '1y')
@@ -189,7 +189,8 @@ def get_graph_key(item_text):
     if 'CCC Yield' in item_text: return 'ccc_yield'
     if 'VIX' in item_text: return 'vix'
     if 'MOVE' in item_text: return 'move'
-    if 'PMI' in item_text: return 'pmi'
+    if 'Manufacturing PMI' in item_text: return 'ism_manufacturing'
+    if 'Services PMI' in item_text: return 'ism_services'
     if 'UMCSI' in item_text: return 'umcsi'
     if 'Building Permits' in item_text: return 'building_permits'
     if 'NFIB' in item_text: return 'nfib'
@@ -702,33 +703,31 @@ def generate_graph(metric_key, data, history, metrics, today):
     series = None
 
     if metric_key == 'copper_gold':
-        ratio = history['copper'] / history['gold']
+        common_index = history['copper'].index.intersection(history['gold'].index)
+        ratio = history['copper'].reindex(common_index) / history['gold'].reindex(common_index)
         series = ratio.last('12M')
         ax.set_title('Copper/Gold Ratio (last 12M)')
 
     elif metric_key == 'spread_10ff':
         yield10 = history['10yr_yield']
-        ff = history['fed_funds']
-        common_index = yield10.index.intersection(ff.index)
-        spread = yield10.reindex(common_index) - ff.reindex(common_index)
+        ff = history['fed_funds'].reindex(yield10.index, method='nearest')
+        spread = yield10 - ff
         series = spread.last('12M')
         ax.set_title('10Yr-FedFunds Spread (last 12M)')
 
     elif metric_key == 'spread_10_2':
         yield10 = history['10yr_yield']
-        yield2 = history['2yr_yield']
-        common_index = yield10.index.intersection(yield2.index)
-        spread = yield10.reindex(common_index) - yield2.reindex(common_index)
+        yield2 = history['2yr_yield'].reindex(yield10.index, method='nearest')
+        spread = yield10 - yield2
         series = spread.last('12M')
         ax.set_title('10Yr-2Yr Spread (last 12M)')
 
     elif metric_key == 'yield_curve_compare':
-        short = today - timedelta(days=1095)
+        short = pd.Timestamp(today - timedelta(days=1095))
         ten = history['10yr_yield'][history['10yr_yield'].index >= short].dropna()
         two = history['2yr_yield'][history['2yr_yield'].index >= short].reindex(ten.index, method='nearest').dropna()
-        if len(ten) > 1 and len(two) > 1:
-            spread = ten - two
-            series = spread
+        spread = ten - two
+        series = spread
         ax.set_title('10Yr - 2Yr Spread (last 3 years)')
         ax.axhline(0, color='red', linestyle='--')
 
@@ -776,22 +775,21 @@ def generate_short_term_graph(metric_key, history, today):
     series = None
 
     if metric_key == 'copper_gold':
-        ratio = history['copper'] / history['gold']
+        common_index = history['copper'].index.intersection(history['gold'].index)
+        ratio = history['copper'].reindex(common_index) / history['gold'].reindex(common_index)
         series = ratio[ratio.index >= short]
 
     elif metric_key == 'spread_10ff':
         yield10 = history['10yr_yield']
-        ff = history['fed_funds']
-        common_index = yield10.index.intersection(ff.index)
-        spread = yield10.reindex(common_index) - ff.reindex(common_index)
+        ff = history['fed_funds'].reindex(yield10.index, method='nearest')
+        spread = yield10 - ff
         series = spread[spread.index >= short]
         ax.set_title('10Yr-FedFunds Spread – Last 3 Months')
 
     elif metric_key == 'spread_10_2':
         yield10 = history['10yr_yield']
-        yield2 = history['2yr_yield']
-        common_index = yield10.index.intersection(yield2.index)
-        spread = yield10.reindex(common_index) - yield2.reindex(common_index)
+        yield2 = history['2yr_yield'].reindex(yield10.index, method='nearest')
+        spread = yield10 - yield2
         series = spread[spread.index >= short]
         ax.set_title('10Yr-2Yr Spread – Last 3 Months')
 
@@ -833,128 +831,219 @@ def generate_short_term_graph(metric_key, history, today):
     plt.tight_layout()
     return fig
 
-def fig_to_base64(fig):
-    buf = BytesIO()
-    fig.savefig(buf, format="png")
-    buf.seek(0)
-    return base64.b64encode(buf.read()).decode('utf-8')
-
 def generate_html_summary(tailwinds, headwinds, neutrals, bias, data, history, metrics, today, score):
+    def build_section(items_list):
+        html_parts = []
+        for item in items_list:
+            gkey = get_graph_key(item)
+            fig = generate_graph(gkey, data, history, metrics, today)
+            buf = BytesIO()
+            fig.savefig(buf, format='png', bbox_inches='tight', dpi=200)
+            buf.seek(0)
+            img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+            plt.close(fig)
+
+            short_html = ''
+            short_fig = generate_short_term_graph(gkey, history, today)
+            if short_fig is not None:
+                sbuf = BytesIO()
+                short_fig.savefig(sbuf, format='png', bbox_inches='tight', dpi=180)
+                sbuf.seek(0)
+                short_base64 = base64.b64encode(sbuf.read()).decode('utf-8')
+                plt.close(short_fig)
+                short_html = f'<h4 style="margin:20px 0 8px 0;color:#555;font-size:1.05em;">Short-term View (last 3 months)</h4><img src="data:image/png;base64,{short_base64}" style="width:100%;max-width:820px;display:block;margin:0 auto;box-shadow:0 4px 12px rgba(0,0,0,0.08);"/>'
+
+            desc = get_description(gkey)
+            desc_html = f'<p style="margin-top:12px;color:#444;font-size:0.95em;">{desc}</p>' if desc else ''
+
+            terminal_html = ''
+            if gkey == '10yr_yield':
+                current = data['10yr_yield']
+                terminal = metrics.get('terminal_10yr', current)
+                terminal_html = f'''
+                <h4 style="margin:25px 0 10px 0;color:#555;font-size:1.05em;">10-Yr Treasury Yield & Terminal Yield</h4>
+                <table style="width:100%;max-width:820px;margin:15px auto;border-collapse:collapse;font-size:0.95em;border:1px solid #ddd;">
+                    <thead>
+                        <tr style="background:#f8f8f8;">
+                            <th style="padding:10px;border:1px solid #ddd;text-align:left;">Metric</th>
+                            <th style="padding:10px;border:1px solid #ddd;text-align:right;">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="padding:10px;border:1px solid #ddd;">Current 10-Yr Yield</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{current:.2f}%</td></tr>
+                        <tr><td style="padding:10px;border:1px solid #ddd;">Terminal Yield (recent high)</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{terminal:.2f}%</td></tr>
+                    </tbody>
+                </table>'''
+
+            bear_html = ''
+            if gkey == 'sp500':
+                sp_bear = metrics.get('sp_bear', {})
+                if sp_bear:
+                    bear_html = f'''
+                    <h4 style="margin:25px 0 10px 0;color:#555;font-size:1.05em;">S&P 500 Bull / Bear Market Status</h4>
+                    <table style="width:100%;max-width:820px;margin:15px auto;border-collapse:collapse;font-size:0.95em;border:1px solid #ddd;">
+                        <thead>
+                            <tr style="background:#f8f8f8;">
+                                <th style="padding:10px;border:1px solid #ddd;text-align:left;">Metric</th>
+                                <th style="padding:10px;border:1px solid #ddd;text-align:left;">Date / Note</th>
+                                <th style="padding:10px;border:1px solid #ddd;text-align:right;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">Current</td><td style="padding:10px;border:1px solid #ddd;">{sp_bear.get('current_date','N/A')}</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sp_bear.get('current',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">Last High</td><td style="padding:10px;border:1px solid #ddd;">{sp_bear.get('last_high_date','N/A')}</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sp_bear.get('last_high',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">New Bear Threshold</td><td style="padding:10px;border:1px solid #ddd;">20% from High</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sp_bear.get('new_bear_threshold',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">Previous Bear Market Threshold</td><td style="padding:10px;border:1px solid #ddd;">{sp_bear.get('prev_bear_date','N/A')}</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sp_bear.get('prev_bear',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;"># of Days Bull</td><td style="padding:10px;border:1px solid #ddd;"></td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sp_bear.get('days_bull',0)}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;"># of Days avg. Bull</td><td style="padding:10px;border:1px solid #ddd;"></td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sp_bear.get('avg_days_bull',997)}</td></tr>
+                        </tbody>
+                    </table>'''
+            elif gkey == 'stoxx600':
+                sb = metrics.get('stoxx_bear', {})
+                if sb:
+                    bear_html = f'''
+                    <h4 style="margin:25px 0 10px 0;color:#555;font-size:1.05em;">STOXX 600 Bull / Bear Market Status</h4>
+                    <table style="width:100%;max-width:820px;margin:15px auto;border-collapse:collapse;font-size:0.95em;border:1px solid #ddd;">
+                        <thead>
+                            <tr style="background:#f8f8f8;">
+                                <th style="padding:10px;border:1px solid #ddd;text-align:left;">Metric</th>
+                                <th style="padding:10px;border:1px solid #ddd;text-align:left;">Date / Note</th>
+                                <th style="padding:10px;border:1px solid #ddd;text-align:right;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">Current</td><td style="padding:10px;border:1px solid #ddd;">{sb.get('current_date','N/A')}</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sb.get('current',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">Last High</td><td style="padding:10px;border:1px solid #ddd;">{sb.get('last_high_date','N/A')}</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sb.get('last_high',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">New Bear Threshold</td><td style="padding:10px;border:1px solid #ddd;">20% from High</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sb.get('new_bear_threshold',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;">Previous Bear Market Threshold</td><td style="padding:10px;border:1px solid #ddd;">{sb.get('prev_bear_date','N/A')}</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sb.get('prev_bear',0):,.2f}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;"># of Days Bull</td><td style="padding:10px;border:1px solid #ddd;"></td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sb.get('days_bull',0)}</td></tr>
+                            <tr><td style="padding:10px;border:1px solid #ddd;"># of Days avg. Bull</td><td style="padding:10px;border:1px solid #ddd;"></td><td style="padding:10px;border:1px solid #ddd;text-align:right;">{sb.get('avg_days_bull',857)}</td></tr>
+                        </tbody>
+                    </table>'''
+
+            html_parts.append(f'''
+<li>
+    <details>
+        <summary>{item}</summary>
+        <div style="padding:18px;background:#fafafa;border:1px solid #e5e5e5;border-top:none;border-radius:0 0 6px 6px;">
+            <img src="data:image/png;base64,{img_base64}" style="width:100%;max-width:820px;display:block;margin:0 auto;box-shadow:0 4px 12px rgba(0,0,0,0.08);"/>
+            {short_html}
+            {desc_html}
+            {terminal_html}
+            {bear_html}
+        </div>
+    </details>
+</li>''')
+        return ''.join(html_parts)
+
     html = f"""
-    <html>
-    <head>
-    <title>Macro Bias Report - {today.date()}</title>
-    <style>
-    body {{ font-family: Arial; }}
-    .section {{ margin-bottom: 20px; }}
-    .tailwind {{ color: green; }}
-    .headwind {{ color: red; }}
-    .neutral {{ color: gray; }}
-    </style>
-    </head>
-    <body>
-    <h1>Macro Portfolio Bias Report</h1>
-    <p>Date: {today.date()}</p>
-    <p>Bias: {bias}</p>
-    <p>Score: {score}/100</p>
-    <h2>Tailwinds</h2>
-    <ul>
-    {''.join(f'<li class="tailwind">{t}</li>' for t in tailwinds)}
-    </ul>
-    <h2>Headwinds</h2>
-    <ul>
-    {''.join(f'<li class="headwind">{h}</li>' for h in headwinds)}
-    </ul>
-    <h2>Neutrals</h2>
-    <ul>
-    {''.join(f'<li class="neutral">{n}</li>' for n in neutrals)}
-    </ul>
+    <html><head><title>Portfolio Bias Summary</title>
+    <style>body{{font-family:Arial,sans-serif;padding:40px;background:#fff;color:#000;max-width:920px;margin:auto;}}
+    h1{{color:#1a1a1a;font-size:32px;}} .bias{{font-size:1.35em;font-weight:bold;color:#003366;margin-bottom:35px;border-bottom:2px solid #e5e5e5;padding-bottom:12px;}}
+    .score{{font-size:1.4em;font-weight:bold;color:#003366;}}
+    h2{{font-size:24px;border-bottom:3px solid #ddd;padding-bottom:10px;margin-top:45px;}}
+    ul{{list-style-type:disc;padding-left:28px;}} summary{{font-size:1.05em;font-weight:600;cursor:pointer;padding:12px 16px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:6px;}}
+    summary:hover{{background:#f0f0f0;}}</style></head><body>
+    <h1>Portfolio Bias Summary</h1>
+    <p class="bias">Recommended Bias: {bias}</p>
+    <p class="score">GDP Growth Score: {score:.0f}/100</p>
+    <h2 style="color:#28a745;border-bottom:3px solid #28a745;">Tailwinds (Positive)</h2><ul>{build_section(tailwinds)}</ul>
+    <h2 style="color:#dc3545;border-bottom:3px solid #dc3545;">Headwinds (Negative)</h2><ul>{build_section(headwinds)}</ul>
+    <h2>Neutrals</h2><ul>{build_section(neutrals)}</ul>
+    </body></html>
     """
-
-    # Add graphs for each item
-    items = tailwinds + headwinds + neutrals
-    for item in items:
-        key = get_graph_key(item)
-        if key != 'placeholder':
-            fig = generate_graph(key, data, history, metrics, today)
-            img_str = fig_to_base64(fig)
-            html += f'<h3>{item}</h3><img src="data:image/png;base64,{img_str}"><br>'
-
-    html += "</body></html>"
     return html
 
-def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics, today):
-    sector_dict = {
-        'Technology': {'etf': 'XLK'},
-        'Industrials': {'etf': 'XLI'},
-        'Financials': {'etf': 'XLF'},
-        'Consumer Discretionary': {'etf': 'XLY'},
-        'Utilities': {'etf': 'XLU'},
-        'Healthcare': {'etf': 'XLV'},
-        'Energy': {'etf': 'XLE'},
-        'Materials': {'etf': 'XLB'},
-        'Consumer Staples': {'etf': 'XLP'},
-        'Real Estate': {'etf': 'XLRE'},
-        'Communication Services': {'etf': 'XLC'},
-    }
-
-    commodity_dict = {
-        'Gold': {'ticker': 'GC=F'},
-        'Copper': {'ticker': 'HG=F'},
-        # Add more if needed
-    }
-
-    all_sectors = list(sector_dict.keys())
-    selected_sectors = preferred_sectors if preferred_sectors else all_sectors
-    num_sectors = len(selected_sectors)
-    base_alloc_pct = 100 / num_sectors
-    adjustment = 1.0
-
-    if risk_level == 'Low':
-        adjustment = 0.8
-    elif risk_level == 'High':
-        adjustment = 1.2
-
-    offensive_sectors = ['Technology', 'Consumer Discretionary', 'Financials', 'Industrials']
-    defensive_sectors = ['Utilities', 'Healthcare', 'Consumer Staples']
-
-    allocations = []
-    for sector in selected_sectors:
-        alloc_pct = base_alloc_pct * adjustment
-        if 'Long' in bias:
-            if sector in offensive_sectors:
-                alloc_pct *= 1.1
-            else:
-                alloc_pct *= 0.9
-        elif 'Short' in bias:
-            if sector in defensive_sectors:
-                alloc_pct *= 1.1
-            else:
-                alloc_pct *= 0.9
-        amount = (alloc_pct / 100) * portfolio_size
-        allocations.append({'Sector': sector, 'Allocation %': alloc_pct, 'Amount $': amount})
-
-    tilt_df = pd.DataFrame(allocations)
-
-    # Normalize to 100%
-    total_pct = tilt_df['Allocation %'].sum()
-    tilt_df['Allocation %'] = (tilt_df['Allocation %'] / total_pct) * 100
-    tilt_df['Amount $'] = (tilt_df['Allocation %'] / 100) * portfolio_size
-
-    return tilt_df, sector_dict, commodity_dict
-
-def plot_sector_chart(ticker, period):
+def plot_sector_chart(etf_ticker, period='1y'):
     try:
-        hist = yf.Ticker(ticker).history(period=period)['Close']
+        hist = yf.Ticker(etf_ticker).history(period=period)['Close']
         fig, ax = plt.subplots(figsize=(6, 4))
-        hist.plot(ax=ax, title=f'{ticker} - {period.upper()} Performance')
+        hist.plot(ax=ax, linewidth=2)
+        ax.set_title(f'{etf_ticker} Performance ({period})')
         plt.tight_layout()
         return fig
     except:
         return None
 
-def plot_commodity_chart(ticker, period):
-    return plot_sector_chart(ticker, period)  # Reuse the same function
+def plot_commodity_chart(ticker, period='1y'):
+    try:
+        hist = yf.Ticker(ticker).history(period=period)['Close']
+        fig, ax = plt.subplots(figsize=(6, 4))
+        hist.plot(ax=ax, linewidth=2)
+        ax.set_title(f'{ticker} Performance ({period})')
+        plt.tight_layout()
+        return fig
+    except:
+        return None
+
+def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics, today):
+    all_sectors = {
+        'Technology': {'etf': 'XLK', 'type': 'cyclical'},
+        'Industrials': {'etf': 'XLI', 'type': 'cyclical'},
+        'Financials': {'etf': 'XLF', 'type': 'cyclical'},
+        'Consumer Discretionary': {'etf': 'XLY', 'type': 'cyclical'},
+        'Materials': {'etf': 'XLB', 'type': 'cyclical'},
+        'Energy': {'etf': 'XLE', 'type': 'cyclical'},
+        'Healthcare': {'etf': 'XLV', 'type': 'defensive'},
+        'Utilities': {'etf': 'XLU', 'type': 'defensive'},
+        'Consumer Staples': {'etf': 'XLP', 'type': 'defensive'},
+        'Real Estate': {'etf': 'XLRE', 'type': 'defensive'},
+        'Communication Services': {'etf': 'XLC', 'type': 'mixed'},
+    }
+
+    all_commodities = {
+        'Gold': {'ticker': 'GLD'},
+        'Oil': {'ticker': 'USO'},
+        'Silver': {'ticker': 'SLV'},
+        'Copper': {'ticker': 'CPER'},
+    }
+
+    # Calculate hybrid performance: 0.5 * 3m return + 0.5 * 1y return
+    performance = {}
+    for sector, info in all_sectors.items():
+        hist = yf.Ticker(info['etf']).history(period='1y')['Close']
+        if len(hist) > 1:
+            ret_1y = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
+        else:
+            ret_1y = 0
+        three_m_ago = pd.Timestamp(today - timedelta(days=90))
+        three_m_ago = three_m_ago.tz_localize(hist.index.tz) if hist.index.tz else three_m_ago
+        hist_3m = hist[hist.index >= three_m_ago]
+        if not hist_3m.empty:
+            ret_3m = (hist.iloc[-1] - hist_3m.iloc[0]) / hist_3m.iloc[0]
+        else:
+            ret_3m = 0
+        performance[sector] = 0.5 * ret_1y + 0.5 * ret_3m
+
+    sorted_sectors = sorted(performance, key=performance.get, reverse=True)
+    hot = sorted_sectors[:len(sorted_sectors)//2]
+    cold = sorted_sectors[len(sorted_sectors)//2:]
+
+    # Recommendations with diversification (5-7 sectors total)
+    if 'Long' in bias:
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:4] or sorted_sectors[:4]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:3] or sorted_sectors[-3:]
+        long_alloc = portfolio_size * 0.6 / len(longs) if len(longs) > 0 else 0
+        short_alloc = portfolio_size * 0.4 / len(shorts) if len(shorts) > 0 else 0
+    elif 'Short' in bias:
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:3] or sorted_sectors[:3]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:4] or sorted_sectors[-4:]
+        long_alloc = portfolio_size * 0.4 / len(longs) if len(longs) > 0 else 0
+        short_alloc = portfolio_size * 0.6 / len(shorts) if len(shorts) > 0 else 0
+    else:
+        longs = sorted_sectors[:3]
+        shorts = sorted_sectors[-3:]
+        long_alloc = portfolio_size * 0.5 / len(longs) if len(longs) > 0 else 0
+        short_alloc = portfolio_size * 0.5 / len(shorts) if len(shorts) > 0 else 0
+
+    tilt_df = pd.DataFrame({
+        'Type': ['Long'] * len(longs) + ['Short'] * len(shorts),
+        'Sector': longs + shorts,
+        'ETF': [all_sectors[s]['etf'] for s in longs + shorts],
+        'Allocation ($)': [long_alloc] * len(longs) + [short_alloc] * len(shorts)
+    })
+
+    return tilt_df, all_sectors, all_commodities
 
 # --- STREAMLIT ---
 st.set_page_config(page_title="Macro Portfolio Bias & Sector Tilt", layout="wide")
@@ -999,22 +1088,21 @@ if st.session_state.bias_calculated:
 
     if st.button("Generate Sector Tilt Recommendations", type="primary"):
         with st.spinner("Calculating sector tilts..."):
-            tilt_df, sector_dict, commodity_dict = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data, st.session_state.metrics, st.session_state.today)
+            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data, st.session_state.metrics, st.session_state.today)
             st.table(tilt_df)
 
             st.subheader("Sector Performance Charts")
-            for sector, info in sector_dict.items():
-                if sector in tilt_df['Sector'].values:
-                    st.subheader(f"{sector} - {info['etf']}")
-                    cols = st.columns(3)
-                    for i, period in enumerate(['5y', '1y', '3mo']):
-                        with cols[i]:
-                            fig = plot_sector_chart(info['etf'], period)
-                            if fig:
-                                st.pyplot(fig)
+            for sector, info in sectors.items():
+                st.subheader(f"{sector} - {info['etf']}")
+                cols = st.columns(3)
+                for i, period in enumerate(['5y', '1y', '3mo']):
+                    with cols[i]:
+                        fig = plot_sector_chart(info['etf'], period)
+                        if fig:
+                            st.pyplot(fig)
 
             st.subheader("Commodity Performance Charts")
-            for comm, info in commodity_dict.items():
+            for comm, info in commodities.items():
                 st.subheader(f"{comm} - {info['ticker']}")
                 cols = st.columns(3)
                 for i, period in enumerate(['5y', '1y', '3mo']):
