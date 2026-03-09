@@ -392,7 +392,7 @@ def calculate_metrics(data, history, today):
 
     # 10. VIX
     vix_val = float(data['vix'])
-    vix_change_daily = float(history['vix'].iloc[-1] - float(history['vix'].iloc[-2]) if len(history['vix']) > 1 else 0
+    vix_change_daily = float(history['vix'].iloc[-1]) - float(history['vix'].iloc[-2]) if len(history['vix']) > 1 else 0
     one_month_ago = pd.Timestamp(today - timedelta(days=30))
     vix_month_ago = history['vix'][history['vix'].index >= one_month_ago].iloc[0] if not history['vix'][history['vix'].index >= one_month_ago].empty else history['vix'].iloc[0]
     vix_change_mom = vix_val - vix_month_ago
