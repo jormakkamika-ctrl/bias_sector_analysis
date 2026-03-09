@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from fredapi import Fred
-import yfinance as yf
 from datetime import datetime, timedelta
 import numpy as np
 import requests
@@ -10,6 +9,7 @@ from bs4 import BeautifulSoup
 import base64
 from io import BytesIO
 import re
+from polygon import RESTClient
 
 # --- CONFIGURATION ---
 FRED_API_KEY = 'e210def24f02e4a73ac744035fa51963'
@@ -24,15 +24,14 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     return macd, sig, hist
 
 @st.cache_data(ttl=3600)
-def fetch_data(as_of_date=datetime.now()):
+def fetch_data():
     data = {}
     history = {}
-    today = as_of_date
+    today = datetime.now()
 
     def safe_get_series(series_id, default_value=0, default_history=None):
         try:
             series = fred.get_series(series_id)
-            series = series[series.index <= today]
             if series is None or series.empty:
                 raise ValueError
             return float(series.iloc[-1]), series
@@ -71,15 +70,13 @@ def fetch_data(as_of_date=datetime.now()):
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
                 series = pd.Series(np.linspace(current_val - 5, current_val + 3, num_months), index=date_range)
-                series = series[series.index <= today]
-                return float(series.iloc[-1]), series
+                return current_val, series
             elif indicator == 'eesi':
                 match = re.search(r'to (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
                 series = pd.Series(np.linspace(current_val - 8, current_val + 4, num_months), index=date_range)
-                series = series[series.index <= today]
-                return float(series.iloc[-1]), series
+                return current_val, series
 
             tables = soup.find_all('table')
             table = None
@@ -105,7 +102,6 @@ def fetch_data(as_of_date=datetime.now()):
                     except:
                         continue
             series = pd.Series(values, index=dates).sort_index()
-            series = series[series.index <= today]
             series = series[-num_months:]
             return float(series.iloc[-1]), series
 
@@ -130,26 +126,36 @@ def fetch_data(as_of_date=datetime.now()):
     data['m1'], history['m1'] = safe_get_series('M1SL', 19100)
     data['m2'], history['m2'] = safe_get_series('M2SL', 22400)
 
-    def get_yf_data(ticker, default_val, default_std, period='1y'):
+    def get_polygon_data(ticker, default_val, default_std, period='1y'):
         try:
+            client = RESTClient()
             days = 365 if period == '1y' else 1825 if period == '5y' else 90
-            start = today - timedelta(days=days)
-            hist = yf.Ticker(ticker).history(start=start, end=today)['Close']
-            hist.index = hist.index.tz_localize(None)
+            from_date = (today - timedelta(days=days)).strftime('%Y-%m-%d')
+            to_date = today.strftime('%Y-%m-%d')
+            aggs = client.get_aggs(ticker, 1, 'day', from_date, to_date)
+            if not aggs:
+                raise ValueError
+            dates = [a.timestamp for a in aggs]
+            closes = [a.close for a in aggs]
+            hist = pd.Series(closes, index=pd.to_datetime(dates, unit='ms'))
+            hist = hist.sort_index()
             return float(hist.iloc[-1]), hist
         except:
             num_days = days
             date_range = pd.date_range(end=today, periods=num_days)
             return default_val, pd.Series(np.random.normal(default_val, default_std, num_days), index=date_range)
 
-    data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5, '1y')
-    data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10, '1y')
+    data['vix'], history['vix'] = get_polygon_data('^VIX', 19.09, 5, '1y')
+    data['move'], history['move'] = get_polygon_data('^MOVE', 85.0, 10, '1y')
+
+    data['copper'], history['copper'] = get_polygon_data('HG=F', 4.0, 0.5, '1y')
+    data['gold'], history['gold'] = get_polygon_data('GC=F', 2000, 200, '1y')
 
     try:
-        sp = get_yf_data('^GSPC', 5000, 500, '1y')[1]
+        sp = get_polygon_data('^GSPC', 5000, 500, '1y')[1]
         data['sp_lagging'] = 'UP' if sp.iloc[-1] > sp.iloc[0] else 'DOWN'
         history['sp500'] = sp
-        sp_long = get_yf_data('^GSPC', 5000, 500, '5y')[1]
+        sp_long = get_polygon_data('^GSPC', 5000, 500, '5y')[1]
         history['sp500_long'] = sp_long
     except:
         data['sp_lagging'] = 'UP'
@@ -157,10 +163,10 @@ def fetch_data(as_of_date=datetime.now()):
         history['sp500_long'] = pd.Series(np.random.normal(5000, 500, 1825), index=pd.date_range(end=today, periods=1825))
 
     try:
-        stoxx = get_yf_data('^STOXX', 500, 50, '1y')[1]
+        stoxx = get_polygon_data('^STOXX', 500, 50, '1y')[1]
         data['stoxx_lagging'] = 'UP' if stoxx.iloc[-1] > stoxx.iloc[0] else 'DOWN'
         history['stoxx600'] = stoxx
-        stoxx_long = get_yf_data('^STOXX', 500, 50, '5y')[1]
+        stoxx_long = get_polygon_data('^STOXX', 500, 50, '5y')[1]
         history['stoxx600_long'] = stoxx_long
     except:
         data['stoxx_lagging'] = 'UP'
@@ -169,7 +175,6 @@ def fetch_data(as_of_date=datetime.now()):
 
     try:
         core = fred.get_series('CPILFESL')
-        core = core[core.index <= today]
         data['core_cpi_yoy'] = ((core.iloc[-1] / core.iloc[-13]) - 1) * 100 if len(core) > 13 else 2.5
         history['core_cpi'] = core
     except:
@@ -249,6 +254,9 @@ def calculate_metrics(data, history, today):
         metrics['real_rate_2yr'] = data['2yr_yield'] - (data['core_cpi_yoy'] / 12)
         metrics['yield_curve_10ff'] = data['10yr_yield'] - data['fed_funds']
         metrics['yield_curve_10_2'] = data['10yr_yield'] - data['2yr_yield']
+        metrics['copper_gold_ratio'] = data['copper'] / data['gold']
+        ratio_change = (history['copper'].iloc[-1] / history['gold'].iloc[-1]) - (history['copper'].iloc[0] / history['gold'].iloc[0])
+        metrics['copper_gold_ratio_change'] = ratio_change
     except:
         return {}, [], [], [], "Error", 50
 
@@ -292,6 +300,12 @@ def calculate_metrics(data, history, today):
             headwinds.append(sp_label + " (negative for GDP)")
     except:
         neutrals.append("S&P Data Unavailable")
+
+    # Copper/Gold ratio
+    if metrics['copper_gold_ratio_change'] > 0:
+        tailwinds.append("Copper/Gold ratio increasing (positive leading indicator for growth)")
+    else:
+        headwinds.append("Copper/Gold ratio decreasing (negative leading indicator for growth)")
 
     # 2. Fed Funds
     ff_change = history['fed_funds'].iloc[-1] - history['fed_funds'].iloc[-2] if len(history['fed_funds']) > 1 else 0
@@ -659,7 +673,7 @@ def calculate_metrics(data, history, today):
     metrics['stoxx_bear'] = stoxx_bear
 
     # Scoring
-    score = 0
+   score = 0
     score += min(max(metrics.get('sp_96_return', 0) / 5 * 18, 0), 18) if metrics.get('sp_96_return', 0) > 0 else 0
     score += 12 if data.get('sp_lagging') == 'UP' else 0
     score += 15 if metrics.get('yield_curve_10_2', 0) > 0 else 0
@@ -679,6 +693,7 @@ def calculate_metrics(data, history, today):
     score += 5 if data.get('nfib', 99) > 100 else 0
     score += 5 if metrics.get('m1_growth_pos', False) else 0
     score += 5 if metrics.get('m2_growth_pos', False) else 0
+    score += 8 if metrics.get('copper_gold_ratio_change', 0) > 0 else 0
     score = max(0, min(100, score))
 
     if score >= 60:
