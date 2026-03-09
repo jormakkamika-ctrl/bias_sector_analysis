@@ -673,7 +673,7 @@ def calculate_metrics(data, history, today):
     metrics['stoxx_bear'] = stoxx_bear
 
     # Scoring
-   score = 0
+    score = 0
     score += min(max(metrics.get('sp_96_return', 0) / 5 * 18, 0), 18) if metrics.get('sp_96_return', 0) > 0 else 0
     score += 12 if data.get('sp_lagging') == 'UP' else 0
     score += 15 if metrics.get('yield_curve_10_2', 0) > 0 else 0
