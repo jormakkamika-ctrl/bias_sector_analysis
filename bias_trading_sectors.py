@@ -987,7 +987,8 @@ def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_s
             ret_1y = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
         else:
             ret_1y = 0
-        three_m_ago = pd.Timestamp(today - timedelta(days=90))
+        three_m_ago = today - timedelta(days=90)
+        three_m_ago = pd.Timestamp(three_m_ago).tz_localize(hist.index.tz) if hist.index.tz else pd.Timestamp(three_m_ago)
         hist_3m = hist[hist.index >= three_m_ago]
         if not hist_3m.empty:
             ret_3m = (hist.iloc[-1] - hist_3m.iloc[0]) / hist_3m.iloc[0]
