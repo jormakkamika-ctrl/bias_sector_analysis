@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from fredapi import Fred
+import yfinance as yf
 from datetime import datetime, timedelta
 import numpy as np
 import requests
@@ -9,7 +10,6 @@ from bs4 import BeautifulSoup
 import base64
 from io import BytesIO
 import re
-from polygon import RESTClient
 
 # --- CONFIGURATION ---
 FRED_API_KEY = 'e210def24f02e4a73ac744035fa51963'
@@ -126,36 +126,27 @@ def fetch_data():
     data['m1'], history['m1'] = safe_get_series('M1SL', 19100)
     data['m2'], history['m2'] = safe_get_series('M2SL', 22400)
 
-    def get_polygon_data(ticker, default_val, default_std, period='1y'):
+    def get_yf_data(ticker, default_val, default_std, period='1y'):
         try:
-            client = RESTClient()
-            days = 365 if period == '1y' else 1825 if period == '5y' else 90
-            from_date = (today - timedelta(days=days)).strftime('%Y-%m-%d')
-            to_date = today.strftime('%Y-%m-%d')
-            aggs = client.get_aggs(ticker, 1, 'day', from_date, to_date)
-            if not aggs:
-                raise ValueError
-            dates = [a.timestamp for a in aggs]
-            closes = [a.close for a in aggs]
-            hist = pd.Series(closes, index=pd.to_datetime(dates, unit='ms'))
-            hist = hist.sort_index()
+            hist = yf.Ticker(ticker).history(period=period)['Close']
+            hist.index = hist.index.tz_localize(None)
             return float(hist.iloc[-1]), hist
         except:
-            num_days = days
+            num_days = 365 if period == '1y' else 1825 if period == '5y' else 90
             date_range = pd.date_range(end=today, periods=num_days)
             return default_val, pd.Series(np.random.normal(default_val, default_std, num_days), index=date_range)
 
-    data['vix'], history['vix'] = get_polygon_data('^VIX', 19.09, 5, '1y')
-    data['move'], history['move'] = get_polygon_data('^MOVE', 85.0, 10, '1y')
+    data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5, '1y')
+    data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10, '1y')
 
-    data['copper'], history['copper'] = get_polygon_data('HG=F', 4.0, 0.5, '1y')
-    data['gold'], history['gold'] = get_polygon_data('GC=F', 2000, 200, '1y')
+    data['copper'], history['copper'] = get_yf_data('HG=F', 4.0, 0.5, '1y')
+    data['gold'], history['gold'] = get_yf_data('GC=F', 2000, 200, '1y')
 
     try:
-        sp = get_polygon_data('^GSPC', 5000, 500, '1y')[1]
+        sp = get_yf_data('^GSPC', 5000, 500, '1y')[1]
         data['sp_lagging'] = 'UP' if sp.iloc[-1] > sp.iloc[0] else 'DOWN'
         history['sp500'] = sp
-        sp_long = get_polygon_data('^GSPC', 5000, 500, '5y')[1]
+        sp_long = get_yf_data('^GSPC', 5000, 500, '5y')[1]
         history['sp500_long'] = sp_long
     except:
         data['sp_lagging'] = 'UP'
@@ -163,10 +154,10 @@ def fetch_data():
         history['sp500_long'] = pd.Series(np.random.normal(5000, 500, 1825), index=pd.date_range(end=today, periods=1825))
 
     try:
-        stoxx = get_polygon_data('^STOXX', 500, 50, '1y')[1]
+        stoxx = get_yf_data('^STOXX', 500, 50, '1y')[1]
         data['stoxx_lagging'] = 'UP' if stoxx.iloc[-1] > stoxx.iloc[0] else 'DOWN'
         history['stoxx600'] = stoxx
-        stoxx_long = get_polygon_data('^STOXX', 500, 50, '5y')[1]
+        stoxx_long = get_yf_data('^STOXX', 500, 50, '5y')[1]
         history['stoxx600_long'] = stoxx_long
     except:
         data['stoxx_lagging'] = 'UP'
@@ -988,29 +979,35 @@ def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_s
         'Copper': {'ticker': 'CPER'},
     }
 
-    # Calculate 3m returns for hot/cold
+    # Calculate hybrid performance: 0.5 * 3m return + 0.5 * 1y return
     performance = {}
     for sector, info in all_sectors.items():
-        hist = yf.Ticker(info['etf']).history(period='3mo')['Close']
+        hist = yf.Ticker(info['etf']).history(period='1y')['Close']
         if len(hist) > 1:
-            ret = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
+            ret_1y = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
         else:
-            ret = 0
-        performance[sector] = ret
+            ret_1y = 0
+        three_m_ago = today - timedelta(days=90)
+        hist_3m = hist[hist.index >= three_m_ago]
+        if not hist_3m.empty:
+            ret_3m = (hist.iloc[-1] - hist_3m.iloc[0]) / hist_3m.iloc[0]
+        else:
+            ret_3m = 0
+        performance[sector] = 0.5 * ret_1y + 0.5 * ret_3m
 
     sorted_sectors = sorted(performance, key=performance.get, reverse=True)
     hot = sorted_sectors[:len(sorted_sectors)//2]
     cold = sorted_sectors[len(sorted_sectors)//2:]
 
-    # Recommendations
+    # Recommendations with diversification (5-7 sectors total)
     if 'Long' in bias:
-        longs = [s for s in sorted_sectors if s in preferred_sectors][:3] or sorted_sectors[:3]
-        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:2] or sorted_sectors[-2:]
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:4] or sorted_sectors[:4]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:3] or sorted_sectors[-3:]
         long_alloc = portfolio_size * 0.6 / len(longs) if len(longs) > 0 else 0
         short_alloc = portfolio_size * 0.4 / len(shorts) if len(shorts) > 0 else 0
     elif 'Short' in bias:
-        longs = [s for s in sorted_sectors if s in preferred_sectors][:2] or sorted_sectors[:2]
-        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:3] or sorted_sectors[-3:]
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:3] or sorted_sectors[:3]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:4] or sorted_sectors[-4:]
         long_alloc = portfolio_size * 0.4 / len(longs) if len(longs) > 0 else 0
         short_alloc = portfolio_size * 0.6 / len(shorts) if len(shorts) > 0 else 0
     else:
