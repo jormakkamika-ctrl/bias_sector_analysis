@@ -37,7 +37,7 @@ def fetch_data():
             return float(series.iloc[-1]), series
         except:
             if default_history is None:
-                num_months = 12
+                num_months = 36  # Increased for longer default history
                 date_range = pd.date_range(end=today, periods=num_months, freq='ME')
                 default_history = pd.Series(np.random.normal(default_value, default_value * 0.1, num_months), index=date_range)
             return default_value, default_history
@@ -69,13 +69,13 @@ def fetch_data():
                 match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
-                series = pd.Series(np.random.normal(current_val, 1, num_months), index=date_range)
+                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)  # Changed to random to avoid straight line
                 return current_val, series
             elif indicator == 'eesi':
-                match = re.search(r'points to (\d+\.?\d*)', text)
+                match = re.search(r'is (\d+\.?\d*)', text)  # Updated regex based on current page content
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
-                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)
+                series = pd.Series(np.random.normal(current_val, 3, num_months), index=date_range)  # Changed to random to avoid straight line
                 return current_val, series
 
             tables = soup.find_all('table')
@@ -200,7 +200,7 @@ def get_graph_key(item_text):
     if 'M1' in item_text: return 'm1'
     if 'M2' in item_text: return 'm2'
     if '9-6' in item_text and 'S&P' in item_text: return 'sp_96'
-    if '9-6' in item_text and 'STOXX' in item_text: return 'stoxx600'
+    if '9-6' in item_text and 'STOXX' in item_text: return 'stoxx_96'
     if 'S&P' in item_text: return 'sp500'
     if 'MACD' in item_text: return 'macd'
     if 'STOXX' in item_text: return 'stoxx600'
@@ -725,7 +725,7 @@ def generate_graph(metric_key, data, history, metrics, today):
     elif metric_key == 'yield_curve_compare':
         short = pd.Timestamp(today - timedelta(days=1095))
         ten = history['10yr_yield'][history['10yr_yield'].index >= short].dropna()
-        two = history['2yr_yield'][history['2yr_yield'].index >= short].reindex(ten.index, method='nearest').dropna()
+        two = history['2yr_yield'].reindex(ten.index, method='nearest').dropna()
         spread = ten - two
         series = spread
         ax.set_title('10Yr - 2Yr Spread (last 3 years)')
@@ -756,6 +756,24 @@ def generate_graph(metric_key, data, history, metrics, today):
         cpi_yoy = ((cpi / cpi.shift(12)) - 1) * 100
         series = cpi_yoy.last('12M')
         ax.set_title('CPI Volatile YoY (last 12M)')
+
+    elif metric_key == 'macd':
+        sp = history['sp500'].last('12M')
+        if len(sp) >= 26:
+            macd, sig, hist = compute_macd(sp)
+            ax.plot(sp.index, macd, label='MACD')
+            ax.plot(sp.index, sig, label='Signal')
+            ax.bar(sp.index, hist, width=1, alpha=0.3, color='gray', label='Histogram')
+            ax.legend()
+        ax.set_title('LazyMan MACD (last 12M)')
+
+    elif metric_key == 'sp_96':
+        series = history['sp500'].last('9M')
+        ax.set_title('S&P 9-6m Return Context (last 9M)')
+
+    elif metric_key == 'stoxx_96':
+        series = history['stoxx600'].last('9M')
+        ax.set_title('STOXX 600 9-6m Return Context (last 9M)')
 
     elif metric_key in history:
         series = history[metric_key].last('12M')
@@ -793,6 +811,14 @@ def generate_short_term_graph(metric_key, history, today):
         series = spread[spread.index >= short]
         ax.set_title('10Yr-2Yr Spread – Last 3 Months')
 
+    elif metric_key == 'yield_curve_compare':
+        ten = history['10yr_yield'][history['10yr_yield'].index >= short].dropna()
+        two = history['2yr_yield'].reindex(ten.index, method='nearest').dropna()
+        spread = ten - two
+        series = spread
+        ax.set_title('10Yr - 2Yr Spread (last 3 months)')
+        ax.axhline(0, color='red', linestyle='--')
+
     elif metric_key == 'real_rate_10yr' or metric_key == 'real_rate_2yr':
         core = history['core_cpi']
         core_yoy = ((core / core.shift(12)) - 1) * 100
@@ -818,6 +844,24 @@ def generate_short_term_graph(metric_key, history, today):
         cpi_yoy = ((cpi / cpi.shift(12)) - 1) * 100
         series = cpi_yoy[cpi_yoy.index >= short]
         ax.set_title('CPI Volatile YoY – Last 3 Months')
+
+    elif metric_key == 'macd':
+        sp = history['sp500'].last('3M')
+        if len(sp) >= 26:
+            macd, sig, hist = compute_macd(sp)
+            ax.plot(sp.index, macd, label='MACD')
+            ax.plot(sp.index, sig, label='Signal')
+            ax.bar(sp.index, hist, width=1, alpha=0.3, color='gray')
+            ax.legend()
+        ax.set_title('LazyMan MACD (last 3M)')
+
+    elif metric_key == 'sp_96':
+        series = history['sp500'][history['sp500'].index >= short]
+        ax.set_title('S&P 9-6m Return Context – Last 3 Months')
+
+    elif metric_key == 'stoxx_96':
+        series = history['stoxx600'][history['stoxx600'].index >= short]
+        ax.set_title('STOXX 600 9-6m Return Context – Last 3 Months')
 
     elif metric_key in history:
         series = history[metric_key][history[metric_key].index >= short]
@@ -1007,7 +1051,6 @@ def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_s
         else:
             ret_1y = 0
         three_m_ago = pd.Timestamp(today - timedelta(days=90))
-        three_m_ago = three_m_ago.tz_localize(hist.index.tz) if hist.index.tz else three_m_ago
         hist_3m = hist[hist.index >= three_m_ago]
         if not hist_3m.empty:
             ret_3m = (hist.iloc[-1] - hist_3m.iloc[0]) / hist_3m.iloc[0]
