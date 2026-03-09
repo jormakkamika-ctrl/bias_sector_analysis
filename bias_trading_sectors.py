@@ -66,16 +66,16 @@ def fetch_data():
             text = soup.get_text()
 
             if indicator == 'sbi':
-                match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text)
+                match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text) or re.search(r'is (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
-                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)
+                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)  # random
                 return current_val, series
             elif indicator == 'eesi':
-                match = re.search(r'points to (\d+\.?\d*)', text)
+                match = re.search(r'(\d+\.?\d*) points', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
-                series = pd.Series(np.random.normal(current_val, 3, num_months), index=date_range)
+                series = pd.Series(np.random.normal(current_val, 3, num_months), index=date_range)  # random
                 return current_val, series
 
             tables = soup.find_all('table')
@@ -113,7 +113,7 @@ def fetch_data():
     data['ism_services'], history['ism_services'] = get_econ_series('non manufacturing pmi', 53.8, 24)
     data['nfib'], history['nfib'] = get_econ_series('nfib business optimism index', 99.3, 24)
     data['cpi_volatile'], history['cpi_volatile'] = get_econ_series('cpi_volatile', 300)
-    data['sbi'], history['sbi'] = get_econ_series('sbi', 68.4, 8)
+    data['sbi'], history['sbi'] = get_econ_series('sbi', 68.4, 24)  # Increased num_months to 24
     data['eesi'], history['eesi'] = get_econ_series('eesi', 50, 24)
     data['umcsi'], history['umcsi'] = safe_get_series('UMCSENT', 56.6)
     building_permits, history['building_permits'] = safe_get_series('PERMIT', 1448)
@@ -781,8 +781,7 @@ def generate_graph(metric_key, data, history, metrics, today):
 
     if series is not None and not series.empty:
         series.plot(ax=ax, linewidth=2)
-        if len(series) == 1:
-            ax.scatter(series.index, series.values, color='red')
+        ax.scatter(series.index, series.values, color='red')  # add points always
     else:
         ax.text(0.5, 0.5, 'No data available', ha='center')
 
@@ -871,8 +870,7 @@ def generate_short_term_graph(metric_key, history, today):
 
     if series is not None and not series.empty:
         series.plot(ax=ax, linewidth=2)
-        if len(series) == 1:
-            ax.scatter(series.index, series.values, color='red')
+        ax.scatter(series.index, series.values, color='red')  # add points always
     else:
         ax.text(0.5, 0.5, 'No data available', ha='center')
 
