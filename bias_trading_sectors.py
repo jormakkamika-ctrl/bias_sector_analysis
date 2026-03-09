@@ -957,7 +957,7 @@ def plot_commodity_chart(ticker, period='1y'):
     except:
         return None
 
-def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics):
+def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics, today):
     all_sectors = {
         'Technology': {'etf': 'XLK', 'type': 'cyclical'},
         'Industrials': {'etf': 'XLI', 'type': 'cyclical'},
@@ -1068,7 +1068,7 @@ if st.session_state.bias_calculated:
 
     if st.button("Generate Sector Tilt Recommendations", type="primary"):
         with st.spinner("Calculating sector tilts..."):
-            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data, st.session_state.metrics)
+            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data, st.session_state.metrics, st.session_state.today)
             st.table(tilt_df)
 
             st.subheader("Sector Performance Charts")
