@@ -69,13 +69,13 @@ def fetch_data():
                 match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
-                series = pd.Series(np.linspace(current_val - 5, current_val + 3, num_months), index=date_range)
+                series = pd.Series(np.random.normal(current_val, 1, num_months), index=date_range)
                 return current_val, series
             elif indicator == 'eesi':
                 match = re.search(r'points to (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
-                series = pd.Series(np.linspace(current_val - 8, current_val + 4, num_months), index=date_range)
+                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)
                 return current_val, series
 
             tables = soup.find_all('table')
@@ -134,7 +134,7 @@ def fetch_data():
         except:
             num_days = 365 if period == '1y' else 1825 if period == '5y' else 90
             date_range = pd.date_range(end=today, periods=num_days)
-            return default_val, pd.Series(np.random.normal(default_value, default_std, num_days), index=date_range)
+            return default_val, pd.Series(np.random.normal(default_val, default_std, num_days), index=date_range)
 
     data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5, '1y')
     data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10, '1y')
@@ -392,7 +392,7 @@ def calculate_metrics(data, history, today):
 
     # 10. VIX
     vix_val = float(data['vix'])
-    vix_change_daily = float(history['vix'].iloc[-1]) - float(history['vix'].iloc[-2]) if len(history['vix']) > 1 else 0
+    vix_change_daily = float(history['vix'].iloc[-1] - float(history['vix'].iloc[-2]) if len(history['vix']) > 1 else 0
     one_month_ago = pd.Timestamp(today - timedelta(days=30))
     vix_month_ago = history['vix'][history['vix'].index >= one_month_ago].iloc[0] if not history['vix'][history['vix'].index >= one_month_ago].empty else history['vix'].iloc[0]
     vix_change_mom = vix_val - vix_month_ago
