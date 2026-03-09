@@ -24,20 +24,21 @@ def compute_macd(series, fast=12, slow=26, signal=9):
     return macd, sig, hist
 
 @st.cache_data(ttl=3600)
-def fetch_data():
+def fetch_data(as_of_date=datetime.now()):
     data = {}
     history = {}
-    today = datetime.now()
+    today = as_of_date
 
     def safe_get_series(series_id, default_value=0, default_history=None):
         try:
             series = fred.get_series(series_id)
+            series = series[series.index <= today]
             if series is None or series.empty:
                 raise ValueError
             return float(series.iloc[-1]), series
         except:
             if default_history is None:
-                num_months = 36  # Increased for longer default history
+                num_months = 12
                 date_range = pd.date_range(end=today, periods=num_months, freq='ME')
                 default_history = pd.Series(np.random.normal(default_value, default_value * 0.1, num_months), index=date_range)
             return default_value, default_history
@@ -46,11 +47,11 @@ def fetch_data():
         try:
             headers = {'User-Agent': 'Mozilla/5.0'}
             if indicator == 'business confidence':
-                return safe_get_series('NAPM', 52.6)
+                url = 'https://ycharts.com/indicators/us_pmi'
             elif indicator == 'non manufacturing pmi':
-                return safe_get_series('NMFPMI', 53.8)
+                url = 'https://ycharts.com/indicators/us_ism_non_manufacturing_index'
             elif indicator == 'nfib business optimism index':
-                return safe_get_series('NFIBSBIO', 99.3)
+                url = 'https://ycharts.com/indicators/small_business_optimism_index'
             elif indicator == 'sbi':
                 url = 'https://www.uschamber.com/sbindex/summary'
             elif indicator == 'eesi':
@@ -66,17 +67,19 @@ def fetch_data():
             text = soup.get_text()
 
             if indicator == 'sbi':
-                match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text) or re.search(r'is (\d+\.?\d*)', text)
+                match = re.search(r'SBI:?\s*(\d+\.?\d*)', text) or re.search(r'Index is (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='QE')
-                series = pd.Series(np.random.normal(current_val, 2, num_months), index=date_range)  # random
-                return current_val, series
+                series = pd.Series(np.linspace(current_val - 5, current_val + 3, num_months), index=date_range)
+                series = series[series.index <= today]
+                return float(series.iloc[-1]), series
             elif indicator == 'eesi':
-                match = re.search(r'(\d+\.?\d*) points', text)
+                match = re.search(r'to (\d+\.?\d*)', text)
                 current_val = float(match.group(1)) if match else default_value
                 date_range = pd.date_range(end=today, periods=num_months, freq='2W')
-                series = pd.Series(np.random.normal(current_val, 3, num_months), index=date_range)  # random
-                return current_val, series
+                series = pd.Series(np.linspace(current_val - 8, current_val + 4, num_months), index=date_range)
+                series = series[series.index <= today]
+                return float(series.iloc[-1]), series
 
             tables = soup.find_all('table')
             table = None
@@ -102,6 +105,7 @@ def fetch_data():
                     except:
                         continue
             series = pd.Series(values, index=dates).sort_index()
+            series = series[series.index <= today]
             series = series[-num_months:]
             return float(series.iloc[-1]), series
 
@@ -113,7 +117,7 @@ def fetch_data():
     data['ism_services'], history['ism_services'] = get_econ_series('non manufacturing pmi', 53.8, 24)
     data['nfib'], history['nfib'] = get_econ_series('nfib business optimism index', 99.3, 24)
     data['cpi_volatile'], history['cpi_volatile'] = get_econ_series('cpi_volatile', 300)
-    data['sbi'], history['sbi'] = get_econ_series('sbi', 68.4, 24)  # Increased num_months to 24
+    data['sbi'], history['sbi'] = get_econ_series('sbi', 68.4, 8)
     data['eesi'], history['eesi'] = get_econ_series('eesi', 50, 24)
     data['umcsi'], history['umcsi'] = safe_get_series('UMCSENT', 56.6)
     building_permits, history['building_permits'] = safe_get_series('PERMIT', 1448)
@@ -128,19 +132,18 @@ def fetch_data():
 
     def get_yf_data(ticker, default_val, default_std, period='1y'):
         try:
-            hist = yf.Ticker(ticker).history(period=period)['Close']
+            days = 365 if period == '1y' else 1825 if period == '5y' else 90
+            start = today - timedelta(days=days)
+            hist = yf.Ticker(ticker).history(start=start, end=today)['Close']
             hist.index = hist.index.tz_localize(None)
             return float(hist.iloc[-1]), hist
         except:
-            num_days = 365 if period == '1y' else 1825 if period == '5y' else 90
+            num_days = days
             date_range = pd.date_range(end=today, periods=num_days)
             return default_val, pd.Series(np.random.normal(default_val, default_std, num_days), index=date_range)
 
     data['vix'], history['vix'] = get_yf_data('^VIX', 19.09, 5, '1y')
     data['move'], history['move'] = get_yf_data('^MOVE', 85.0, 10, '1y')
-
-    data['copper'], history['copper'] = get_yf_data('HG=F', 4.0, 0.5, '1y')
-    data['gold'], history['gold'] = get_yf_data('GC=F', 2000, 200, '1y')
 
     try:
         sp = get_yf_data('^GSPC', 5000, 500, '1y')[1]
@@ -154,10 +157,10 @@ def fetch_data():
         history['sp500_long'] = pd.Series(np.random.normal(5000, 500, 1825), index=pd.date_range(end=today, periods=1825))
 
     try:
-        stoxx = get_yf_data('^SXXP', 500, 50, '1y')[1]
+        stoxx = get_yf_data('^STOXX', 500, 50, '1y')[1]
         data['stoxx_lagging'] = 'UP' if stoxx.iloc[-1] > stoxx.iloc[0] else 'DOWN'
         history['stoxx600'] = stoxx
-        stoxx_long = get_yf_data('^SXXP', 500, 50, '5y')[1]
+        stoxx_long = get_yf_data('^STOXX', 500, 50, '5y')[1]
         history['stoxx600_long'] = stoxx_long
     except:
         data['stoxx_lagging'] = 'UP'
@@ -166,16 +169,21 @@ def fetch_data():
 
     try:
         core = fred.get_series('CPILFESL')
+        core = core[core.index <= today]
         data['core_cpi_yoy'] = ((core.iloc[-1] / core.iloc[-13]) - 1) * 100 if len(core) > 13 else 2.5
         history['core_cpi'] = core
     except:
         data['core_cpi_yoy'] = 2.5
-        history['core_cpi'] = pd.Series(np.random.normal(2.5, 0.5, 36), index=pd.date_range(end=today, periods=36, freq='ME'))  # Increased to 36
+        history['core_cpi'] = pd.Series(np.random.normal(2.5, 0.5, 12), index=pd.date_range(end=today, periods=12, freq='ME'))
 
     return data, history, today
 
 def get_graph_key(item_text):
-    if 'Copper/Gold' in item_text: return 'copper_gold'
+    if '9-6' in item_text and 'S&P' in item_text: return 'sp_96'
+    if '9-6' in item_text and 'STOXX' in item_text: return 'stoxx600'
+    if 'S&P' in item_text: return 'sp500'
+    if 'MACD' in item_text: return 'macd'
+    if 'STOXX' in item_text: return 'stoxx600'
     if '10Yr-FedFunds' in item_text: return 'spread_10ff'
     if '10Yr-2Yr' in item_text: return 'spread_10_2'
     if 'Yield Curve comparison' in item_text: return 'yield_curve_compare'
@@ -189,8 +197,7 @@ def get_graph_key(item_text):
     if 'CCC Yield' in item_text: return 'ccc_yield'
     if 'VIX' in item_text: return 'vix'
     if 'MOVE' in item_text: return 'move'
-    if 'Manufacturing PMI' in item_text: return 'ism_manufacturing'
-    if 'Services PMI' in item_text: return 'ism_services'
+    if 'PMI' in item_text: return 'pmi'
     if 'UMCSI' in item_text: return 'umcsi'
     if 'Building Permits' in item_text: return 'building_permits'
     if 'NFIB' in item_text: return 'nfib'
@@ -199,11 +206,6 @@ def get_graph_key(item_text):
     if 'EESI' in item_text: return 'eesi'
     if 'M1' in item_text: return 'm1'
     if 'M2' in item_text: return 'm2'
-    if '9-6' in item_text and 'S&P' in item_text: return 'sp_96'
-    if '9-6' in item_text and 'STOXX' in item_text: return 'stoxx_96'
-    if 'S&P' in item_text: return 'sp500'
-    if 'MACD' in item_text: return 'macd'
-    if 'STOXX' in item_text: return 'stoxx600'
     return 'placeholder'
 
 def get_description(gkey):
@@ -247,9 +249,6 @@ def calculate_metrics(data, history, today):
         metrics['real_rate_2yr'] = data['2yr_yield'] - (data['core_cpi_yoy'] / 12)
         metrics['yield_curve_10ff'] = data['10yr_yield'] - data['fed_funds']
         metrics['yield_curve_10_2'] = data['10yr_yield'] - data['2yr_yield']
-        metrics['copper_gold_ratio'] = data['copper'] / data['gold']
-        ratio_change = (history['copper'].iloc[-1] / history['gold'].iloc[-1]) - (history['copper'].iloc[0] / history['gold'].iloc[0])
-        metrics['copper_gold_ratio_change'] = ratio_change
     except:
         return {}, [], [], [], "Error", 50
 
@@ -261,10 +260,10 @@ def calculate_metrics(data, history, today):
     try:
         sp_end = float(history['sp500'].iloc[-1])
         sp_change_daily = sp_end - float(history['sp500'].iloc[-2]) if len(history['sp500']) > 1 else 0
-        one_month_ago = pd.Timestamp(today - timedelta(days=30))
+        one_month_ago = today - timedelta(days=30)
         sp_month_ago = history['sp500'][history['sp500'].index >= one_month_ago].iloc[0] if not history['sp500'][history['sp500'].index >= one_month_ago].empty else history['sp500'].iloc[0]
         sp_change_mom = sp_end - sp_month_ago
-        three_month_ago = pd.Timestamp(today - timedelta(days=90))
+        three_month_ago = today - timedelta(days=90)
         sp_three_month_ago = history['sp500'][history['sp500'].index >= three_month_ago].iloc[0] if not history['sp500'][history['sp500'].index >= three_month_ago].empty else history['sp500'].iloc[0]
         sp_change_3m = sp_end - sp_three_month_ago
         sp_start_yoy = float(history['sp500'].iloc[0])
@@ -294,12 +293,6 @@ def calculate_metrics(data, history, today):
     except:
         neutrals.append("S&P Data Unavailable")
 
-    # Copper/Gold ratio
-    if metrics['copper_gold_ratio_change'] > 0:
-        tailwinds.append("Copper/Gold ratio increasing (positive leading indicator for growth)")
-    else:
-        headwinds.append("Copper/Gold ratio decreasing (negative leading indicator for growth)")
-
     # 2. Fed Funds
     ff_change = history['fed_funds'].iloc[-1] - history['fed_funds'].iloc[-2] if len(history['fed_funds']) > 1 else 0
     ff_dir = "down" if ff_change < 0 else "up" if ff_change > 0 else "unchanged"
@@ -314,10 +307,10 @@ def calculate_metrics(data, history, today):
 
     # 3. 10-Yr Yield + Terminal
     ty_change_daily = history['10yr_yield'].iloc[-1] - history['10yr_yield'].iloc[-2] if len(history['10yr_yield']) > 1 else 0
-    one_month_ago = pd.Timestamp(today - timedelta(days=30))
+    one_month_ago = today - timedelta(days=30)
     ty_month_ago = history['10yr_yield'][history['10yr_yield'].index >= one_month_ago].iloc[0] if not history['10yr_yield'][history['10yr_yield'].index >= one_month_ago].empty else history['10yr_yield'].iloc[0]
     ty_change_mom = data['10yr_yield'] - ty_month_ago
-    three_month_ago = pd.Timestamp(today - timedelta(days=90))
+    three_month_ago = today - timedelta(days=90)
     ty_three_month_ago = history['10yr_yield'][history['10yr_yield'].index >= three_month_ago].iloc[0] if not history['10yr_yield'][history['10yr_yield'].index >= three_month_ago].empty else history['10yr_yield'].iloc[0]
     ty_change_3m = data['10yr_yield'] - ty_three_month_ago
     terminal_rate = max(history['10yr_yield']) if not history['10yr_yield'].empty else data['10yr_yield']
@@ -393,10 +386,10 @@ def calculate_metrics(data, history, today):
     # 10. VIX
     vix_val = float(data['vix'])
     vix_change_daily = float(history['vix'].iloc[-1]) - float(history['vix'].iloc[-2]) if len(history['vix']) > 1 else 0
-    one_month_ago = pd.Timestamp(today - timedelta(days=30))
+    one_month_ago = today - timedelta(days=30)
     vix_month_ago = history['vix'][history['vix'].index >= one_month_ago].iloc[0] if not history['vix'][history['vix'].index >= one_month_ago].empty else history['vix'].iloc[0]
     vix_change_mom = vix_val - vix_month_ago
-    three_month_ago = pd.Timestamp(today - timedelta(days=90))
+    three_month_ago = today - timedelta(days=90)
     vix_three_month_ago = history['vix'][history['vix'].index >= three_month_ago].iloc[0] if not history['vix'][history['vix'].index >= three_month_ago].empty else history['vix'].iloc[0]
     vix_change_3m = vix_val - vix_three_month_ago
     daily_dir = "down" if vix_change_daily < 0 else "up"
@@ -416,10 +409,10 @@ def calculate_metrics(data, history, today):
     # 11. MOVE
     move_val = float(data['move'])
     move_change_daily = float(history['move'].iloc[-1]) - float(history['move'].iloc[-2]) if len(history['move']) > 1 else 0
-    one_month_ago = pd.Timestamp(today - timedelta(days=30))
+    one_month_ago = today - timedelta(days=30)
     move_month_ago = history['move'][history['move'].index >= one_month_ago].iloc[0] if not history['move'][history['move'].index >= one_month_ago].empty else history['move'].iloc[0]
     move_change_mom = move_val - move_month_ago
-    three_month_ago = pd.Timestamp(today - timedelta(days=90))
+    three_month_ago = today - timedelta(days=90)
     move_three_month_ago = history['move'][history['move'].index >= three_month_ago].iloc[0] if not history['move'][history['move'].index >= three_month_ago].empty else history['move'].iloc[0]
     move_change_3m = move_val - move_three_month_ago
     daily_dir = "down" if move_change_daily < 0 else "up"
@@ -484,8 +477,8 @@ def calculate_metrics(data, history, today):
 
     # 17. S&P 9-6m Return
     if len(history['sp500']) > 200:
-        idx_9m = max(0, len(history['sp500']) -189)
-        idx_6m = max(0, len(history['sp500']) -126)
+        idx_9m = max(0, len(history['sp500']) - 189)
+        idx_6m = max(0, len(history['sp500']) - 126)
         price_9m = history['sp500'].iloc[idx_9m]
         price_6m = history['sp500'].iloc[idx_6m]
         sp_96_return = (price_6m - price_9m) / price_9m * 100
@@ -576,8 +569,8 @@ def calculate_metrics(data, history, today):
 
     # STOXX 600 9-6m
     if len(history['stoxx600']) > 200:
-        idx_9m = max(0, len(history['stoxx600']) -189)
-        idx_6m = max(0, len(history['stoxx600']) -126)
+        idx_9m = max(0, len(history['stoxx600']) - 189)
+        idx_6m = max(0, len(history['stoxx600']) - 126)
         price_9m = history['stoxx600'].iloc[idx_9m]
         price_6m = history['stoxx600'].iloc[idx_6m]
         stoxx_96_return = (price_6m - price_9m) / price_9m * 100
@@ -686,7 +679,6 @@ def calculate_metrics(data, history, today):
     score += 5 if data.get('nfib', 99) > 100 else 0
     score += 5 if metrics.get('m1_growth_pos', False) else 0
     score += 5 if metrics.get('m2_growth_pos', False) else 0
-    score += 8 if metrics.get('copper_gold_ratio_change', 0) > 0 else 0
     score = max(0, min(100, score))
 
     if score >= 60:
@@ -699,181 +691,118 @@ def calculate_metrics(data, history, today):
     return metrics, tailwinds, headwinds, neutrals, bias, score
 
 def generate_graph(metric_key, data, history, metrics, today):
+    if metric_key == 'macd':
+        fig = plt.figure(figsize=(15, 11))
+        gs = fig.add_gridspec(2, 2, height_ratios=[3, 1.8], hspace=0.35, wspace=0.25)
+
+        # 5 Year
+        ax_p5 = fig.add_subplot(gs[0, 0])
+        ax_m5 = fig.add_subplot(gs[1, 0], sharex=ax_p5)
+        sp5 = history.get('sp500_long', history['sp500']).last('60M')
+        if len(sp5) > 0:
+            sp5.plot(ax=ax_p5, color='blue', linewidth=1.8)
+            ax_p5.set_title('S&P 500 & MACD Indicator – 5 Year')
+            ax_p5.grid(True, alpha=0.3)
+        if len(sp5) >= 40:
+            macd, sig, hist = compute_macd(sp5)
+            ax_m5.plot(sp5.index, macd, 'b-', label='MACD Line', linewidth=1.5)
+            ax_m5.plot(sp5.index, sig, 'r-', label='Signal Line', linewidth=1.5)
+            ax_m5.bar(sp5.index, hist, width=pd.Timedelta(days=4), color=['lime' if h >= 0 else 'red' for h in hist], alpha=0.75)
+            ax_m5.axhline(0, color='black', linestyle='--', linewidth=0.8)
+            ax_m5.set_title('MACD (12,26,9)')
+            ax_m5.legend(loc='upper left', fontsize=9)
+
+        # 1 Month
+        ax_p1 = fig.add_subplot(gs[0, 1])
+        ax_m1 = fig.add_subplot(gs[1, 1], sharex=ax_p1)
+        sp1 = history['sp500'].last('45D')
+        if len(sp1) > 0:
+            sp1.plot(ax=ax_p1, color='blue', linewidth=1.8)
+            ax_p1.set_title('S&P 500 & MACD Indicator – 1 Month')
+            ax_p1.grid(True, alpha=0.3)
+        if len(sp1) >= 26:
+            macd, sig, hist = compute_macd(sp1)
+            ax_m1.plot(sp1.index, macd, 'b-', label='MACD Line', linewidth=1.5)
+            ax_m1.plot(sp1.index, sig, 'r-', label='Signal Line', linewidth=1.5)
+            ax_m1.bar(sp1.index, hist, width=pd.Timedelta(days=0.8), color=['lime' if h >= 0 else 'red' for h in hist], alpha=0.75)
+            ax_m1.axhline(0, color='black', linestyle='--', linewidth=0.8)
+            ax_m1.set_title('MACD (12,26,9)')
+            ax_m1.legend(loc='upper left', fontsize=9)
+
+        plt.suptitle("LazyMan Investor – S&P500 & MACD", fontsize=16, fontweight='bold', y=0.98)
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        return fig
+
     fig, ax = plt.subplots(figsize=(8, 4))
-    series = None
-
-    if metric_key == 'copper_gold':
-        common_index = history['copper'].index.intersection(history['gold'].index)
-        ratio = history['copper'].reindex(common_index) / history['gold'].reindex(common_index)
-        series = ratio.last('12M')
-        ax.set_title('Copper/Gold Ratio (last 12M)')
-
-    elif metric_key == 'spread_10ff':
-        yield10 = history['10yr_yield']
-        ff = history['fed_funds'].reindex(yield10.index, method='nearest')
-        spread = yield10 - ff
-        series = spread.last('12M')
-        ax.set_title('10Yr-FedFunds Spread (last 12M)')
-
-    elif metric_key == 'spread_10_2':
-        yield10 = history['10yr_yield']
-        yield2 = history['2yr_yield'].reindex(yield10.index, method='nearest')
-        spread = yield10 - yield2
-        series = spread.last('12M')
-        ax.set_title('10Yr-2Yr Spread (last 12M)')
-
+    if metric_key == 'sp_96':
+        if len(history['sp500']) > 200:
+            idx_9m = max(0, len(history['sp500']) - 189)
+            idx_6m = max(0, len(history['sp500']) - 126)
+            period_series = history['sp500'].iloc[idx_9m:idx_6m]
+            period_series.plot(ax=ax, color='blue', linewidth=2)
+            ax.set_title('S&P 500 9-6 Month Period')
+            ax.text(0.5, 0.9, f"Return: {metrics.get('sp_96_return',0):.2f}%", transform=ax.transAxes, ha='center', fontsize=12, bbox=dict(facecolor='yellow', alpha=0.5))
+        else:
+            ax.text(0.5, 0.5, 'Not enough data for 9-6m period', ha='center')
+    elif metric_key == 'stoxx600':
+        series = history['stoxx600'].last('12M')
+        series.plot(ax=ax, color='darkblue', linewidth=2)
+        ax.set_title('STOXX 600 – Last 12 Months')
     elif metric_key == 'yield_curve_compare':
-        short = pd.Timestamp(today - timedelta(days=1095))
+        short = today - timedelta(days=1095)
         ten = history['10yr_yield'][history['10yr_yield'].index >= short].dropna()
-        two = history['2yr_yield'].reindex(ten.index, method='nearest').dropna()
-        spread = ten - two
-        series = spread
+        two = history['2yr_yield'][history['2yr_yield'].index >= short].reindex(ten.index, method='nearest').dropna()
+        if len(ten) > 1 and len(two) > 1:
+            spread = ten - two
+            spread.plot(ax=ax, color='purple', linewidth=2.5)
         ax.set_title('10Yr - 2Yr Spread (last 3 years)')
         ax.axhline(0, color='red', linestyle='--')
-
-    elif metric_key == 'real_rate_10yr' or metric_key == 'real_rate_2yr':
-        core = history['core_cpi']
-        core_yoy = ((core / core.shift(12)) - 1) * 100
-        core_yoy = core_yoy.dropna()
-        if '10' in metric_key:
-            yield_hist = history['10yr_yield'].reindex(core_yoy.index, method='nearest')
-            title = 'Real Rate 10Yr (last 12M)'
-        else:
-            yield_hist = history['2yr_yield'].reindex(core_yoy.index, method='nearest')
-            title = 'Real Rate 2Yr (last 12M)'
-        real = yield_hist - core_yoy / 12
-        series = real.last('12M')
-        ax.set_title(title)
-
-    elif metric_key == 'core_cpi':
-        core = history['core_cpi']
-        core_yoy = ((core / core.shift(12)) - 1) * 100
-        series = core_yoy.last('12M')
-        ax.set_title('Core CPI YoY (last 12M)')
-
-    elif metric_key == 'cpi_volatile':
-        cpi = history['cpi_volatile']
-        cpi_yoy = ((cpi / cpi.shift(12)) - 1) * 100
-        series = cpi_yoy.last('12M')
-        ax.set_title('CPI Volatile YoY (last 12M)')
-
-    elif metric_key == 'macd':
-        sp = history['sp500'].last('12M')
-        if len(sp) >= 26:
-            macd, sig, hist = compute_macd(sp)
-            ax.plot(sp.index, macd, label='MACD')
-            ax.plot(sp.index, sig, label='Signal')
-            ax.bar(sp.index, hist, width=1, alpha=0.3, color='gray', label='Histogram')
-            ax.legend()
-        ax.set_title('LazyMan MACD (last 12M)')
-
-    elif metric_key == 'sp_96':
-        series = history['sp500'].last('9M')
-        ax.set_title('S&P 9-6m Return Context (last 9M)')
-
-    elif metric_key == 'stoxx_96':
-        series = history['stoxx600'].last('9M')
-        ax.set_title('STOXX 600 9-6m Return Context (last 9M)')
-
     elif metric_key in history:
         series = history[metric_key].last('12M')
+        if not series.empty:
+            series.plot(ax=ax, linewidth=2)
         ax.set_title(f"{metric_key.replace('_', ' ').upper()} (last 12M)")
-
-    if series is not None and not series.empty:
-        series.plot(ax=ax, linewidth=2)
-        ax.scatter(series.index, series.values, color='red')  # add points always
     else:
-        ax.text(0.5, 0.5, 'No data available', ha='center')
-
+        ax.text(0.5, 0.5, f'No chart for {metric_key}', ha='center')
     plt.tight_layout()
     return fig
 
 def generate_short_term_graph(metric_key, history, today):
-    short = pd.Timestamp(today - timedelta(days=90))
+    short = today - timedelta(days=90)
     fig, ax = plt.subplots(figsize=(8, 3))
-    series = None
-
-    if metric_key == 'copper_gold':
-        common_index = history['copper'].index.intersection(history['gold'].index)
-        ratio = history['copper'].reindex(common_index) / history['gold'].reindex(common_index)
-        series = ratio[ratio.index >= short]
-
-    elif metric_key == 'spread_10ff':
-        yield10 = history['10yr_yield']
-        ff = history['fed_funds'].reindex(yield10.index, method='nearest')
-        spread = yield10 - ff
-        series = spread[spread.index >= short]
-        ax.set_title('10Yr-FedFunds Spread – Last 3 Months')
-
-    elif metric_key == 'spread_10_2':
-        yield10 = history['10yr_yield']
-        yield2 = history['2yr_yield'].reindex(yield10.index, method='nearest')
-        spread = yield10 - yield2
-        series = spread[spread.index >= short]
-        ax.set_title('10Yr-2Yr Spread – Last 3 Months')
-
-    elif metric_key == 'yield_curve_compare':
-        ten = history['10yr_yield'][history['10yr_yield'].index >= short].dropna()
-        two = history['2yr_yield'].reindex(ten.index, method='nearest').dropna()
-        spread = ten - two
-        series = spread
-        ax.set_title('10Yr - 2Yr Spread (last 3 months)')
-        ax.axhline(0, color='red', linestyle='--')
-
-    elif metric_key == 'real_rate_10yr' or metric_key == 'real_rate_2yr':
-        core = history['core_cpi']
-        core_yoy = ((core / core.shift(12)) - 1) * 100
-        core_yoy = core_yoy.dropna()
-        if '10' in metric_key:
-            yield_hist = history['10yr_yield'].reindex(core_yoy.index, method='nearest')
-            title = 'Real Rate 10Yr – Last 3 Months'
-        else:
-            yield_hist = history['2yr_yield'].reindex(core_yoy.index, method='nearest')
-            title = 'Real Rate 2Yr – Last 3 Months'
-        real = yield_hist - core_yoy / 12
-        series = real[real.index >= short]
-        ax.set_title(title)
-
-    elif metric_key == 'core_cpi':
-        core = history['core_cpi']
-        core_yoy = ((core / core.shift(12)) - 1) * 100
-        series = core_yoy[core_yoy.index >= short]
-        ax.set_title('Core CPI YoY – Last 3 Months')
-
-    elif metric_key == 'cpi_volatile':
-        cpi = history['cpi_volatile']
-        cpi_yoy = ((cpi / cpi.shift(12)) - 1) * 100
-        series = cpi_yoy[cpi_yoy.index >= short]
-        ax.set_title('CPI Volatile YoY – Last 3 Months')
-
+    
+    if metric_key in ['sp500', 'sp_96']:
+        short_data = history['sp500'][history['sp500'].index >= short]
+        if not short_data.empty:
+            short_data.plot(ax=ax, color='orange', linewidth=2)
+        ax.set_title('S&P 500 – Last 3 Months')
+    
     elif metric_key == 'macd':
-        sp = history['sp500'].last('3M')
+        sp = history['sp500'][history['sp500'].index >= short]
         if len(sp) >= 26:
-            macd, sig, hist = compute_macd(sp)
-            ax.plot(sp.index, macd, label='MACD')
-            ax.plot(sp.index, sig, label='Signal')
-            ax.bar(sp.index, hist, width=1, alpha=0.3, color='gray')
+            macd_l, sig_l, hist = compute_macd(sp)
+            ax.plot(sp.index, macd_l, label='MACD', color='blue')
+            ax.plot(sp.index, sig_l, label='Signal', color='red')
+            ax.bar(sp.index, hist, color=['green' if h>0 else 'red' for h in hist], alpha=0.5)
             ax.legend()
-        ax.set_title('LazyMan MACD (last 3M)')
-
-    elif metric_key == 'sp_96':
-        series = history['sp500'][history['sp500'].index >= short]
-        ax.set_title('S&P 9-6m Return Context – Last 3 Months')
-
-    elif metric_key == 'stoxx_96':
-        series = history['stoxx600'][history['stoxx600'].index >= short]
-        ax.set_title('STOXX 600 9-6m Return Context – Last 3 Months')
-
+        ax.set_title('S&P MACD – Last 3 Months')
+    
+    elif metric_key == 'stoxx600':
+        short_data = history['stoxx600'][history['stoxx600'].index >= short]
+        if not short_data.empty:
+            short_data.plot(ax=ax, color='orange')
+        ax.set_title('STOXX 600 – Last 3 Months')
+    
     elif metric_key in history:
-        series = history[metric_key][history[metric_key].index >= short]
+        short_data = history[metric_key][history[metric_key].index >= short]
+        if not short_data.empty:
+            short_data.plot(ax=ax, color='orange')
         ax.set_title(f"{metric_key.replace('_', ' ').upper()} – Last 3 Months")
-
-    if series is not None and not series.empty:
-        series.plot(ax=ax, linewidth=2)
-        ax.scatter(series.index, series.values, color='red')  # add points always
+    
     else:
-        ax.text(0.5, 0.5, 'No data available', ha='center')
-
+        plt.close(fig)
+        return None
+    
     plt.tight_layout()
     return fig
 
@@ -1022,7 +951,7 @@ def plot_commodity_chart(ticker, period='1y'):
     except:
         return None
 
-def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics, today):
+def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_size, data, metrics):
     all_sectors = {
         'Technology': {'etf': 'XLK', 'type': 'cyclical'},
         'Industrials': {'etf': 'XLI', 'type': 'cyclical'},
@@ -1044,35 +973,29 @@ def generate_sector_tilt(bias, score, risk_level, preferred_sectors, portfolio_s
         'Copper': {'ticker': 'CPER'},
     }
 
-    # Calculate hybrid performance: 0.5 * 3m return + 0.5 * 1y return
+    # Calculate 3m returns for hot/cold
     performance = {}
     for sector, info in all_sectors.items():
-        hist = yf.Ticker(info['etf']).history(period='1y')['Close']
+        hist = yf.Ticker(info['etf']).history(period='3mo')['Close']
         if len(hist) > 1:
-            ret_1y = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
+            ret = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0]
         else:
-            ret_1y = 0
-        three_m_ago = pd.Timestamp(today - timedelta(days=90))
-        hist_3m = hist[hist.index >= three_m_ago]
-        if not hist_3m.empty:
-            ret_3m = (hist.iloc[-1] - hist_3m.iloc[0]) / hist_3m.iloc[0]
-        else:
-            ret_3m = 0
-        performance[sector] = 0.5 * ret_1y + 0.5 * ret_3m
+            ret = 0
+        performance[sector] = ret
 
     sorted_sectors = sorted(performance, key=performance.get, reverse=True)
     hot = sorted_sectors[:len(sorted_sectors)//2]
     cold = sorted_sectors[len(sorted_sectors)//2:]
 
-    # Recommendations with diversification (5-7 sectors total)
+    # Recommendations
     if 'Long' in bias:
-        longs = [s for s in sorted_sectors if s in preferred_sectors][:4] or sorted_sectors[:4]
-        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:3] or sorted_sectors[-3:]
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:3] or sorted_sectors[:3]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:2] or sorted_sectors[-2:]
         long_alloc = portfolio_size * 0.6 / len(longs) if len(longs) > 0 else 0
         short_alloc = portfolio_size * 0.4 / len(shorts) if len(shorts) > 0 else 0
     elif 'Short' in bias:
-        longs = [s for s in sorted_sectors if s in preferred_sectors][:3] or sorted_sectors[:3]
-        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:4] or sorted_sectors[-4:]
+        longs = [s for s in sorted_sectors if s in preferred_sectors][:2] or sorted_sectors[:2]
+        shorts = [s for s in sorted_sectors[::-1] if s in preferred_sectors][:3] or sorted_sectors[-3:]
         long_alloc = portfolio_size * 0.4 / len(longs) if len(longs) > 0 else 0
         short_alloc = portfolio_size * 0.6 / len(shorts) if len(shorts) > 0 else 0
     else:
@@ -1133,7 +1056,7 @@ if st.session_state.bias_calculated:
 
     if st.button("Generate Sector Tilt Recommendations", type="primary"):
         with st.spinner("Calculating sector tilts..."):
-            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data, st.session_state.metrics, st.session_state.today)
+            tilt_df, sectors, commodities = generate_sector_tilt(st.session_state.bias, st.session_state.score, risk_level, preferred_sectors, portfolio_size, st.session_state.data, st.session_state.metrics)
             st.table(tilt_df)
 
             st.subheader("Sector Performance Charts")
