@@ -21,84 +21,59 @@ fred = Fred(api_key=FRED_API_KEY)
 NO_SHORT_TERM_CHART = {'core_cpi', 'eesi', 'cpi_volatile'}
 
 OPTIMIZED_WEIGHTS = {
-    'yield_curve_10_2':   18,
-    'yield_curve_10ff':   12,
-    'real_rate_10yr':      7,
-    'real_rate_2yr':       5,
-    'earnings_growth':    10,
-    'macd_long':          12,
-    'fed_bs_growth':       8,
-    'vix_trend':           8,
-    'sp_96':               8,
-    'stoxx_96':            5,
-    'copper_gold':         5,
-    'ism_manufacturing':   4,
-    'ism_services':        3,
-    'building_permits':    4,
-    'nfib':                3,
-    'umcsi':               3,
-    'bbb_yield':           3,
+    'yield_curve_10_2': 18, 'yield_curve_10ff': 12, 'real_rate_10yr': 7,
+    'real_rate_2yr': 5, 'earnings_growth': 10, 'macd_long': 12,
+    'fed_bs_growth': 8, 'vix_trend': 8, 'sp_96': 8, 'stoxx_96': 5,
+    'copper_gold': 5, 'ism_manufacturing': 4, 'ism_services': 3,
+    'building_permits': 4, 'nfib': 3, 'umcsi': 3, 'bbb_yield': 3,
 }
 
 CYCLE_PHASE_CONFIG = {
-    'early':     {'boost': 20,  'force_short': False, 'label': '🌱 Early Cycle'},
-    'mid':       {'boost':  0,  'force_short': False, 'label': '📈 Mid Cycle'},
-    'late':      {'boost': -15, 'force_short': False, 'label': '⚠️ Late Cycle'},
-    'recession': {'boost': -30, 'force_short': True,  'label': '🔴 Recession / Risk-Off'},
+    'early': {'boost': 20, 'force_short': False, 'label': '🌱 Early Cycle'},
+    'mid': {'boost': 0, 'force_short': False, 'label': '📈 Mid Cycle'},
+    'late': {'boost': -15, 'force_short': False, 'label': '⚠️ Late Cycle'},
+    'recession': {'boost': -30, 'force_short': True, 'label': '🔴 Recession'},
 }
 
 SECTOR_ROTATION = {
-    'early': {
-        'Financials':             0.18, 'Industrials':            0.16, 'Materials':              0.14,
-        'Energy':                 0.12, 'Technology':             0.10, 'Consumer Discretionary': 0.10,
-        'Healthcare':             0.08, 'Consumer Staples':       0.06, 'Utilities':              0.04,
-        'Real Estate':            0.02, 'Communication Services': 0.00,
-    },
-    'mid': {
-        'Technology':             0.18, 'Consumer Discretionary': 0.16, 'Financials':             0.12,
-        'Industrials':            0.10, 'Communication Services': 0.10, 'Materials':              0.08,
-        'Energy':                 0.08, 'Healthcare':             0.08, 'Consumer Staples':       0.06,
-        'Utilities':              0.04, 'Real Estate':            0.00,
-    },
-    'late': {
-        'Healthcare':             0.18, 'Consumer Staples':       0.16, 'Utilities':              0.14,
-        'Real Estate':            0.12, 'Communication Services': 0.10, 'Technology':             0.08,
-        'Consumer Discretionary': 0.06, 'Financials':             0.06, 'Industrials':            0.04,
-        'Materials':              0.03, 'Energy':                 0.03,
-    },
-    'recession': {
-        'Utilities':              0.25, 'Consumer Staples':       0.25, 'Healthcare':             0.20,
-        'Real Estate':            0.15, 'Communication Services': 0.10, 'Technology':             0.05,
-        'Consumer Discretionary': 0.00, 'Financials':             0.00, 'Industrials':            0.00,
-        'Materials':              0.00, 'Energy':                 0.00,
-    },
+    'early': {'Financials': 0.18, 'Industrials': 0.16, 'Materials': 0.14,
+              'Energy': 0.12, 'Technology': 0.10, 'Consumer Discretionary': 0.10,
+              'Healthcare': 0.08, 'Consumer Staples': 0.06, 'Utilities': 0.04,
+              'Real Estate': 0.02, 'Communication Services': 0.00},
+    'mid': {'Technology': 0.18, 'Consumer Discretionary': 0.16, 'Financials': 0.12,
+            'Industrials': 0.10, 'Communication Services': 0.10, 'Materials': 0.08,
+            'Energy': 0.08, 'Healthcare': 0.08, 'Consumer Staples': 0.06,
+            'Utilities': 0.04, 'Real Estate': 0.00},
+    'late': {'Healthcare': 0.18, 'Consumer Staples': 0.16, 'Utilities': 0.14,
+             'Real Estate': 0.12, 'Communication Services': 0.10, 'Technology': 0.08,
+             'Consumer Discretionary': 0.06, 'Financials': 0.06, 'Industrials': 0.04,
+             'Materials': 0.03, 'Energy': 0.03},
+    'recession': {'Utilities': 0.25, 'Consumer Staples': 0.25, 'Healthcare': 0.20,
+                  'Real Estate': 0.15, 'Communication Services': 0.10, 'Technology': 0.05,
+                  'Consumer Discretionary': 0.00, 'Financials': 0.00, 'Industrials': 0.00,
+                  'Materials': 0.00, 'Energy': 0.00},
 }
 
 ALL_SECTORS = {
-    'Technology':             {'etf': 'XLK'},
-    'Industrials':            {'etf': 'XLI'},
-    'Financials':             {'etf': 'XLF'},
-    'Consumer Discretionary': {'etf': 'XLY'},
-    'Materials':              {'etf': 'XLB'},
-    'Energy':                 {'etf': 'XLE'},
-    'Healthcare':             {'etf': 'XLV'},
-    'Utilities':              {'etf': 'XLU'},
-    'Consumer Staples':       {'etf': 'XLP'},
-    'Real Estate':            {'etf': 'XLRE'},
+    'Technology': {'etf': 'XLK'}, 'Industrials': {'etf': 'XLI'},
+    'Financials': {'etf': 'XLF'}, 'Consumer Discretionary': {'etf': 'XLY'},
+    'Materials': {'etf': 'XLB'}, 'Energy': {'etf': 'XLE'},
+    'Healthcare': {'etf': 'XLV'}, 'Utilities': {'etf': 'XLU'},
+    'Consumer Staples': {'etf': 'XLP'}, 'Real Estate': {'etf': 'XLRE'},
     'Communication Services': {'etf': 'XLC'},
 }
 
 SECTOR_PE_HISTORY = {
-    'Technology':             {'mean': 28.0, 'std': 6.0},
-    'Industrials':            {'mean': 20.0, 'std': 4.0},
-    'Financials':             {'mean': 13.0, 'std': 3.0},
+    'Technology': {'mean': 28.0, 'std': 6.0},
+    'Industrials': {'mean': 20.0, 'std': 4.0},
+    'Financials': {'mean': 13.0, 'std': 3.0},
     'Consumer Discretionary': {'mean': 25.0, 'std': 7.0},
-    'Materials':              {'mean': 18.0, 'std': 4.0},
-    'Energy':                 {'mean': 15.0, 'std': 8.0},
-    'Healthcare':             {'mean': 18.0, 'std': 3.0},
-    'Utilities':              {'mean': 17.0, 'std': 3.0},
-    'Consumer Staples':       {'mean': 20.0, 'std': 3.0},
-    'Real Estate':            {'mean': 35.0, 'std': 8.0},
+    'Materials': {'mean': 18.0, 'std': 4.0},
+    'Energy': {'mean': 15.0, 'std': 8.0},
+    'Healthcare': {'mean': 18.0, 'std': 3.0},
+    'Utilities': {'mean': 17.0, 'std': 3.0},
+    'Consumer Staples': {'mean': 20.0, 'std': 3.0},
+    'Real Estate': {'mean': 35.0, 'std': 8.0},
     'Communication Services': {'mean': 20.0, 'std': 5.0},
 }
 
@@ -109,9 +84,9 @@ SECTOR_PE_HISTORY = {
 def compute_macd(series, fast=12, slow=26, signal=9):
     ema_fast = series.ewm(span=fast, adjust=False).mean()
     ema_slow = series.ewm(span=slow, adjust=False).mean()
-    macd     = ema_fast - ema_slow
-    sig      = macd.ewm(span=signal, adjust=False).mean()
-    hist     = macd - sig
+    macd = ema_fast - ema_slow
+    sig = macd.ewm(span=signal, adjust=False).mean()
+    hist = macd - sig
     return macd, sig, hist
 
 def safe_last(series, window_days):
@@ -139,7 +114,7 @@ def _apply_axis_format(ax, series):
         ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
     else:
-        locator   = mdates.AutoDateLocator(minticks=5, maxticks=10)
+        locator = mdates.AutoDateLocator(minticks=5, maxticks=10)
         formatter = mdates.ConciseDateFormatter(locator)
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
@@ -163,8 +138,8 @@ def detect_cycle_phase(spread_10_2, real_10yr, pmi_manuf, earnings_growth):
 def get_vix_trend_signal(vix_series):
     if vix_series is None or len(vix_series) < 22:
         return 0
-    vix_now     = float(vix_series.iloc[-1])
-    vix_1m_ago  = float(vix_series.iloc[-22])
+    vix_now = float(vix_series.iloc[-1])
+    vix_1m_ago = float(vix_series.iloc[-22])
     if vix_now < 12:
         return -1
     elif vix_now > 28:
@@ -178,21 +153,29 @@ def get_pe_zscore(sector_name, etf_ticker):
     hist = SECTOR_PE_HISTORY.get(sector_name, {'mean': 20.0, 'std': 4.0})
     try:
         info = yf.Ticker(etf_ticker).info
-        pe   = info.get('trailingPE') or info.get('forwardPE') or hist['mean']
-        pe   = float(pe)
+        pe = info.get('trailingPE') or info.get('forwardPE') or hist['mean']
+        pe = float(pe)
     except Exception:
         pe = hist['mean']
     return (pe - hist['mean']) / hist['std'] if hist['std'] != 0 else 0.0
 
+def _fig_to_b64(fig):
+    buf = BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode()
+    plt.close(fig)
+    return b64
+
 def _plot_series(ax, series, title, hline=None, color='#1565C0', linewidth=2):
     ax.set_title(title, fontsize=10, fontweight='bold')
     if series is None or series.empty:
-        ax.text(0.5, 0.5, 'No data available', ha='center', va='center', 
+        ax.text(0.5, 0.5, 'No data', ha='center', va='center',
                 transform=ax.transAxes, color='gray')
         return
     s = series.dropna()
     if s.empty:
-        ax.text(0.5, 0.5, 'All values NaN', ha='center', va='center', 
+        ax.text(0.5, 0.5, 'All NaN', ha='center', va='center',
                 transform=ax.transAxes, color='gray')
         return
     if hline is not None:
@@ -202,14 +185,14 @@ def _plot_series(ax, series, title, hline=None, color='#1565C0', linewidth=2):
     _apply_axis_format(ax, s)
 
 def _plot_macd_bars(ax, macd_vals, sig_vals, hist_vals, x_dates, title):
-    bw     = (x_dates[1] - x_dates[0]) * 0.8 if len(x_dates) > 1 else 0.8
+    bw = (x_dates[1] - x_dates[0]) * 0.8 if len(x_dates) > 1 else 0.8
     colors = ['#26a69a' if v >= 0 else '#ef5350' for v in hist_vals]
     ax.bar(x_dates, hist_vals.values, width=bw, alpha=0.6, color=colors, label='Histogram')
     ax.plot(x_dates, macd_vals.values, color='#1565C0', linewidth=1.5, label='MACD')
-    ax.plot(x_dates, sig_vals.values,  color='#E53935', linewidth=1.5, label='Signal')
+    ax.plot(x_dates, sig_vals.values, color='#E53935', linewidth=1.5, label='Signal')
     ax.axhline(0, color='gray', linewidth=0.8, linestyle='--')
     ax.xaxis_date()
-    locator   = mdates.AutoDateLocator(minticks=4, maxticks=8)
+    locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
     formatter = mdates.ConciseDateFormatter(locator)
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
@@ -238,23 +221,15 @@ def _compute_cpi_yoy(history):
         return pd.Series(dtype=float)
     return ((cpi / cpi.shift(12)) - 1) * 100
 
-def _fig_to_b64(fig):
-    buf = BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-    buf.seek(0)
-    b64 = base64.b64encode(buf.read()).decode()
-    plt.close(fig)
-    return b64
-
 # ============================================================================
 # DATA FETCHING
 # ============================================================================
 
 @st.cache_data(ttl=3600)
 def fetch_data():
-    data    = {}
+    data = {}
     history = {}
-    today   = datetime.now()
+    today = datetime.now()
 
     def safe_fred(series_id, default_value=0):
         try:
@@ -265,19 +240,20 @@ def fetch_data():
             return float(s.iloc[-1]), s
         except Exception:
             dr = pd.date_range(end=today, periods=48, freq='ME')
-            fallback = pd.Series(np.random.normal(default_value, max(abs(default_value) * 0.05, 0.01), 48), index=dr)
+            fallback = pd.Series(
+                np.random.normal(default_value, max(abs(default_value) * 0.05, 0.01), 48),
+                index=dr)
             return default_value, fallback
 
-    data['fed_funds'],    history['fed_funds']    = safe_fred('FEDFUNDS', 3.64)
-    data['10yr_yield'],   history['10yr_yield']   = safe_fred('DGS10', 4.086)
-    data['2yr_yield'],    history['2yr_yield']    = safe_fred('DGS2', 3.48)
-    data['bbb_yield'],    history['bbb_yield']    = safe_fred('BAMLC0A4CBBBEY', 4.93)
-    data['ccc_yield'],    history['ccc_yield']    = safe_fred('BAMLH0A3HYCEY', 12.44)
-
+    data['fed_funds'], history['fed_funds'] = safe_fred('FEDFUNDS', 3.64)
+    data['10yr_yield'], history['10yr_yield'] = safe_fred('DGS10', 4.086)
+    data['2yr_yield'], history['2yr_yield'] = safe_fred('DGS2', 3.48)
+    data['bbb_yield'], history['bbb_yield'] = safe_fred('BAMLC0A4CBBBEY', 4.93)
+    data['ccc_yield'], history['ccc_yield'] = safe_fred('BAMLH0A3HYCEY', 12.44)
     data['breakeven_5y'], history['breakeven_5y'] = safe_fred('T5YIFR', 2.3)
 
     data['real_rate_10yr'] = data['10yr_yield'] - data['breakeven_5y']
-    data['real_rate_2yr']  = data['2yr_yield']  - data['breakeven_5y']
+    data['real_rate_2yr'] = data['2yr_yield'] - data['breakeven_5y']
 
     _, history['fed_bs'] = safe_fred('WALCL', 7000)
     fed_bs_s = history['fed_bs'].dropna()
@@ -287,9 +263,9 @@ def fetch_data():
         data['fed_bs_growth'] = 0.0
 
     data['ism_manufacturing'], history['ism_manufacturing'] = safe_fred('NAPM', 52.6)
-    data['ism_services'],      history['ism_services']      = safe_fred('NMFPMI', 53.8)
-    data['nfib'],              history['nfib']              = safe_fred('NFIBSBIO', 99.3)
-    data['umcsi'],             history['umcsi']             = safe_fred('UMCSENT', 56.6)
+    data['ism_services'], history['ism_services'] = safe_fred('NMFPMI', 53.8)
+    data['nfib'], history['nfib'] = safe_fred('NFIBSBIO', 99.3)
+    data['umcsi'], history['umcsi'] = safe_fred('UMCSENT', 56.6)
     data['building_permits_raw'], history['building_permits'] = safe_fred('PERMIT', 1448)
     history['building_permits'] = normalize_index(history['building_permits'])
     data['building_permits'] = data['building_permits_raw'] / 1000.0
@@ -298,33 +274,35 @@ def fetch_data():
         core = fred.get_series('CPILFESL', observation_start='2010-01-01')
         core = normalize_index(core)
         if len(core) < 14:
-            raise ValueError("Not enough data")
+            raise ValueError("Not enough")
         data['core_cpi_yoy'] = ((core.iloc[-1] / core.iloc[-13]) - 1) * 100
-        history['core_cpi']  = core
+        history['core_cpi'] = core
     except Exception:
         data['core_cpi_yoy'] = 2.5
         dr = pd.date_range(end=today, periods=60, freq='ME')
-        history['core_cpi'] = pd.Series([300.0 * (1 + 0.025 / 12) ** i for i in range(60)], index=dr)
+        history['core_cpi'] = pd.Series(
+            [300.0 * (1 + 0.025 / 12) ** i for i in range(60)], index=dr)
 
     data['cpi_volatile'], history['cpi_volatile'] = safe_fred('CPIAUCSL', 300)
 
-    def _scrape_or_fallback(indicator, default, num_months=24):
+    def _fallback(default, num_months=24):
         dr = pd.date_range(end=today, periods=num_months, freq='ME')
         return default, pd.Series(np.random.normal(default, default * 0.04, num_months), index=dr)
 
-    data['sbi'],  history['sbi']  = _scrape_or_fallback('sbi',  68.4)
-    data['eesi'], history['eesi'] = _scrape_or_fallback('eesi', 50.0)
+    data['sbi'], history['sbi'] = _fallback(68.4)
+    data['eesi'], history['eesi'] = _fallback(50.0)
 
     try:
         sp_info = yf.Ticker('^GSPC').info
         trailing_eps = sp_info.get('trailingEps', None)
-        forward_eps  = sp_info.get('forwardEps', None)
+        forward_eps = sp_info.get('forwardEps', None)
         if trailing_eps and forward_eps and trailing_eps != 0:
             data['earnings_growth'] = ((forward_eps - trailing_eps) / abs(trailing_eps)) * 100
         else:
             data['earnings_growth'] = 5.0
         dr = pd.date_range(end=today, periods=40, freq='QE')
-        history['earnings_growth'] = pd.Series(np.random.normal(data['earnings_growth'], 3, 40), index=dr)
+        history['earnings_growth'] = pd.Series(
+            np.random.normal(data['earnings_growth'], 3, 40), index=dr)
     except Exception:
         data['earnings_growth'] = 5.0
         dr = pd.date_range(end=today, periods=40, freq='QE')
@@ -342,17 +320,17 @@ def fetch_data():
             return float(hist.iloc[-1]), hist
         except Exception:
             ndays = {'1y': 365, '5y': 1825, '3mo': 90}.get(period, 365)
-            dr    = pd.date_range(end=today, periods=ndays, freq='B')
-            return default_val, pd.Series(np.random.normal(default_val, default_std, len(dr)), index=dr)
+            dr = pd.date_range(end=today, periods=ndays, freq='B')
+            return default_val, pd.Series(
+                np.random.normal(default_val, default_std, len(dr)), index=dr)
 
-    data['vix'],    history['vix']    = get_yf('^VIX',  19.09, 5.0,  '1y')
-    data['move'],   history['move']   = get_yf('^MOVE', 85.0,  10.0, '1y')
-    data['copper'], history['copper'] = get_yf('HG=F',  4.0,   0.5,  '1y')
-    data['gold'],   history['gold']   = get_yf('GC=F',  2000,  200,  '1y')
-
+    data['vix'], history['vix'] = get_yf('^VIX', 19.09, 5.0, '1y')
+    data['move'], history['move'] = get_yf('^MOVE', 85.0, 10.0, '1y')
+    data['copper'], history['copper'] = get_yf('HG=F', 4.0, 0.5, '1y')
+    data['gold'], history['gold'] = get_yf('GC=F', 2000, 200, '1y')
     data['vix_trend'] = get_vix_trend_signal(history['vix'])
 
-    _, history['sp500']      = get_yf('^GSPC', 5000, 500, '1y')
+    _, history['sp500'] = get_yf('^GSPC', 5000, 500, '1y')
     _, history['sp500_long'] = get_yf('^GSPC', 5000, 500, '5y')
     data['sp_lagging'] = 'UP' if history['sp500'].iloc[-1] > history['sp500'].iloc[0] else 'DOWN'
 
@@ -362,19 +340,19 @@ def fetch_data():
             _, h1y = get_yf(sticker, 500, 50, '1y')
             _, h5y = get_yf(sticker, 500, 50, '5y')
             if not h1y.empty and len(h1y) > 100:
-                history['stoxx600']      = h1y
+                history['stoxx600'] = h1y
                 history['stoxx600_long'] = h5y
-                data['stoxx_lagging']    = 'UP' if h1y.iloc[-1] > h1y.iloc[0] else 'DOWN'
+                data['stoxx_lagging'] = 'UP' if h1y.iloc[-1] > h1y.iloc[0] else 'DOWN'
                 stoxx_loaded = True
                 break
         except Exception:
             continue
     if not stoxx_loaded:
         sp_last = float(history['sp500'].iloc[-1])
-        scale   = 500.0 / sp_last if sp_last != 0 else 0.1
-        history['stoxx600']      = (history['sp500']      * scale).rename('STOXX600_proxy')
+        scale = 500.0 / sp_last if sp_last != 0 else 0.1
+        history['stoxx600'] = (history['sp500'] * scale).rename('STOXX600_proxy')
         history['stoxx600_long'] = (history['sp500_long'] * scale).rename('STOXX600_proxy_long')
-        data['stoxx_lagging']    = data.get('sp_lagging', 'UP')
+        data['stoxx_lagging'] = data.get('sp_lagging', 'UP')
 
     return data, history, today
 
@@ -385,14 +363,13 @@ def fetch_data():
 def generate_macd_4panel(history, today):
     fig, axes = plt.subplots(2, 2, figsize=(14, 8))
     fig.suptitle('LazyMan Investor — S&P500 & MACD (12,26,9)', fontsize=13, fontweight='bold')
-    ax_5y, ax_1m, ax_12m, ax_macd_1m = axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]
+    ax_5y, ax_1m, ax_12m, ax_1m_macd = axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]
 
     sp5y = history['sp500_long'].dropna()
     sp1y = history['sp500'].dropna()
 
     _plot_series(ax_5y, sp5y, 'S&P 500 — 5 Year', color='#1565C0', linewidth=1.5)
-    sp1m = safe_last(sp1y, 31)
-    _plot_series(ax_1m, sp1m, 'S&P 500 — 1 Month', color='#1565C0', linewidth=1.8)
+    _plot_series(ax_1m, safe_last(sp1y, 31), 'S&P 500 — 1 Month', color='#1565C0', linewidth=1.8)
 
     if len(sp1y) >= 26:
         macd_full, sig_full, hist_full = compute_macd(sp1y)
@@ -400,20 +377,19 @@ def generate_macd_4panel(history, today):
         _plot_macd_bars(ax_12m, macd_full, sig_full, hist_full, x12, 'MACD (12,26,9) — 12 Months')
 
         cut1m = pd.Timestamp(today - timedelta(days=31))
-        m1m   = macd_full[macd_full.index >= cut1m]
-        s1m   = sig_full[sig_full.index >= cut1m]
-        h1m   = hist_full[hist_full.index >= cut1m]
+        m1m = macd_full[macd_full.index >= cut1m]
+        s1m = sig_full[sig_full.index >= cut1m]
+        h1m = hist_full[hist_full.index >= cut1m]
         if not m1m.empty:
             x1m = mdates.date2num(m1m.index.to_pydatetime())
-            _plot_macd_bars(ax_macd_1m, m1m, s1m, h1m, x1m, 'MACD (12,26,9) — 1 Month')
+            _plot_macd_bars(ax_1m_macd, m1m, s1m, h1m, x1m, 'MACD (12,26,9) — 1 Month')
         else:
-            ax_macd_1m.text(0.5, 0.5, 'No 1M MACD data', ha='center', va='center', 
-                           transform=ax_macd_1m.transAxes, color='gray')
+            ax_1m_macd.text(0.5, 0.5, 'No 1M data', ha='center', va='center',
+                            transform=ax_1m_macd.transAxes, color='gray')
     else:
-        for ax in [ax_12m, ax_macd_1m]:
-            ax.text(0.5, 0.5, f'Insufficient data ({len(sp1y)} pts, need ≥26)', ha='center', 
-                   va='center', transform=ax.transAxes, color='gray')
-
+        for ax in [ax_12m, ax_1m_macd]:
+            ax.text(0.5, 0.5, f'Need ≥26 pts', ha='center', va='center',
+                    transform=ax.transAxes, color='gray')
     plt.tight_layout()
     return fig
 
@@ -422,8 +398,8 @@ def generate_graph(metric_key, data, history, metrics, today):
         return generate_macd_4panel(history, today)
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    series  = None
-    hline   = None
+    series = None
+    hline = None
 
     if metric_key == 'copper_gold':
         ci = history['copper'].index.intersection(history['gold'].index)
@@ -432,28 +408,28 @@ def generate_graph(metric_key, data, history, metrics, today):
         ax.set_title('Copper/Gold Ratio (last 12M)')
 
     elif metric_key == 'spread_10ff':
-        y10    = history['10yr_yield']
-        ff     = history['fed_funds'].reindex(y10.index, method='nearest', tolerance=pd.Timedelta('35D'))
+        y10 = history['10yr_yield']
+        ff = history['fed_funds'].reindex(y10.index, method='nearest', tolerance=pd.Timedelta('35D'))
         series = safe_last((y10 - ff).dropna(), 365)
-        hline  = 0
+        hline = 0
         ax.set_title('10Yr-FedFunds Spread (last 12M)')
 
     elif metric_key == 'spread_10_2':
-        y10    = history['10yr_yield']
-        y2     = history['2yr_yield'].reindex(y10.index, method='nearest', tolerance=pd.Timedelta('5D'))
+        y10 = history['10yr_yield']
+        y2 = history['2yr_yield'].reindex(y10.index, method='nearest', tolerance=pd.Timedelta('5D'))
         series = safe_last((y10 - y2).dropna(), 365)
-        hline  = 0
+        hline = 0
         ax.set_title('10Yr-2Yr Spread (last 12M)')
 
     elif metric_key == 'real_rate_10yr':
         series = safe_last(_compute_real_rate_series(history, '10yr'), 365)
-        hline  = 0
-        ax.set_title('Real Rate 10Yr (last 12M) — using 5Y Breakeven')
+        hline = 0
+        ax.set_title('Real Rate 10Yr (last 12M)')
 
     elif metric_key == 'real_rate_2yr':
         series = safe_last(_compute_real_rate_series(history, '2yr'), 365)
-        hline  = 0
-        ax.set_title('Real Rate 2Yr (last 12M) — using 5Y Breakeven')
+        hline = 0
+        ax.set_title('Real Rate 2Yr (last 12M)')
 
     elif metric_key == 'core_cpi':
         series = safe_last(_compute_core_cpi_yoy(history).dropna(), 365)
@@ -465,30 +441,30 @@ def generate_graph(metric_key, data, history, metrics, today):
 
     elif metric_key == 'breakeven_5y':
         series = safe_last(history['breakeven_5y'], 365)
-        hline  = 2.0
+        hline = 2.0
         ax.set_title('5Y Breakeven Inflation (last 12M)')
 
     elif metric_key == 'fed_bs':
         series = safe_last(history['fed_bs'], 365)
-        ax.set_title('Fed Balance Sheet Total Assets — $B (last 12M)')
+        ax.set_title('Fed Balance Sheet $B (last 12M)')
 
     elif metric_key == 'sp_96':
         sp = history['sp500']
         if len(sp) > 200:
             i9, i6 = max(0, len(sp) - 189), max(0, len(sp) - 126)
-            series  = sp.iloc[i9: i6 + 1]
+            series = sp.iloc[i9: i6 + 1]
         else:
-            series  = safe_last(sp, 274)
-        ax.set_title('S&P 500 — 9M-to-6M-Ago Window (leading signal)')
+            series = safe_last(sp, 274)
+        ax.set_title('S&P 500 — 9M-to-6M-Ago Window')
 
     elif metric_key == 'stoxx_96':
         st = history['stoxx600']
         if len(st) > 200:
             i9, i6 = max(0, len(st) - 189), max(0, len(st) - 126)
-            series  = st.iloc[i9: i6 + 1]
+            series = st.iloc[i9: i6 + 1]
         else:
-            series  = safe_last(st, 274)
-        ax.set_title('STOXX 600 — 9M-to-6M-Ago Window (leading signal)')
+            series = safe_last(st, 274)
+        ax.set_title('STOXX 600 — 9M-to-6M-Ago Window')
 
     elif metric_key in history:
         series = safe_last(history[metric_key], 365)
@@ -503,52 +479,52 @@ def generate_short_term_graph(metric_key, history, today):
         return None
 
     fig, ax = plt.subplots(figsize=(8, 3))
-    series  = None
-    hline   = None
+    series = None
+    hline = None
 
     if metric_key == 'macd':
         sp_full = history['sp500'].dropna()
         if len(sp_full) >= 26:
             macd_f, sig_f, hist_f = compute_macd(sp_full)
             cut = pd.Timestamp(today - timedelta(days=90))
-            m3  = macd_f[macd_f.index >= cut]
-            s3  = sig_f[sig_f.index >= cut]
-            h3  = hist_f[hist_f.index >= cut]
+            m3 = macd_f[macd_f.index >= cut]
+            s3 = sig_f[sig_f.index >= cut]
+            h3 = hist_f[hist_f.index >= cut]
             if not m3.empty:
                 x = mdates.date2num(m3.index.to_pydatetime())
                 _plot_macd_bars(ax, m3, s3, h3, x, 'LazyMan MACD — Last 3 Months')
             else:
                 ax.text(0.5, 0.5, 'No 3M data', ha='center', va='center',
-                       transform=ax.transAxes, color='gray')
+                        transform=ax.transAxes, color='gray')
         else:
-            ax.text(0.5, 0.5, f'Not enough data ({len(sp_full)} pts)', ha='center',
-                   va='center', transform=ax.transAxes, color='gray')
+            ax.text(0.5, 0.5, f'Need ≥26 pts', ha='center', va='center',
+                    transform=ax.transAxes, color='gray')
         plt.tight_layout()
         return fig
 
     elif metric_key == 'spread_10_2':
-        y10    = history['10yr_yield']
-        y2     = history['2yr_yield'].reindex(y10.index, method='nearest', tolerance=pd.Timedelta('5D'))
+        y10 = history['10yr_yield']
+        y2 = history['2yr_yield'].reindex(y10.index, method='nearest', tolerance=pd.Timedelta('5D'))
         series = _short_term_window((y10 - y2).dropna())
-        hline  = 0
-        ax.set_title('10Yr-2Yr Spread — Recent View')
+        hline = 0
+        ax.set_title('10Yr-2Yr Spread — Recent')
 
     elif metric_key == 'real_rate_10yr':
         series = _short_term_window(_compute_real_rate_series(history, '10yr').dropna())
-        hline  = 0
-        ax.set_title('Real Rate 10Yr — Recent View')
+        hline = 0
+        ax.set_title('Real Rate 10Yr — Recent')
 
     elif metric_key == 'sp_96':
         series = _short_term_window(history['sp500'])
-        ax.set_title('S&P 500 — Last 3 Months (current momentum)')
+        ax.set_title('S&P 500 — Last 3 Months')
 
     elif metric_key == 'stoxx_96':
         series = _short_term_window(history['stoxx600'])
-        ax.set_title('STOXX 600 — Last 3 Months (current momentum)')
+        ax.set_title('STOXX 600 — Last 3 Months')
 
     elif metric_key in history:
         series = _short_term_window(history[metric_key])
-        ax.set_title(f"{metric_key.replace('_', ' ').upper()} — Recent View")
+        ax.set_title(f"{metric_key.replace('_', ' ').upper()} — Recent")
 
     if series is not None:
         _plot_series(ax, series, ax.get_title(), hline=hline)
@@ -561,6 +537,7 @@ def get_graph_key(item_text):
     if '10Yr-FedFunds' in t: return 'spread_10ff'
     if '10Yr-2Yr' in t: return 'spread_10_2'
     if 'Real Rate' in t and '10' in t: return 'real_rate_10yr'
+    if 'Real Rate' in t and '2' in t: return 'real_rate_2yr'
     if 'Breakeven' in t: return 'breakeven_5y'
     if 'Balance Sheet' in t: return 'fed_bs'
     if 'Core CPI' in t: return 'core_cpi'
@@ -570,6 +547,64 @@ def get_graph_key(item_text):
     if 'MACD' in t: return 'macd'
     return 'placeholder'
 
+def get_description(gkey):
+    d = {
+        'macd': 'MACD identifies momentum crossovers. 19 years: 12 trades, catches major moves.',
+        'sp500': 'S&P 500 forward-looking GDP indicator (~69% correlation).',
+        'stoxx600': 'STOXX 600 global risk appetite proxy (~55% correlation with US GDP).',
+        'spread_10ff': '10Y - Fed Funds. Positive = accommodative; negative = restrictive.',
+        'spread_10_2': '10Y - 2Y classic yield curve. Inversion precedes recession by 12–18M.',
+        'real_rate_10yr': 'Real Rate = Nominal - 5Y Breakeven. Negative = stimulative.',
+        'real_rate_2yr': 'Real Rate 2Y captures short-term policy stance.',
+        'breakeven_5y': '5Y breakeven inflation (forward-looking, replaces backward CPI).',
+        'fed_bs': 'Fed balance sheet. Expanding = QE/easing; contracting = QT/tightening.',
+        'core_cpi': 'Core CPI YoY (reference only).',
+        'cpi_volatile': 'Headline CPI YoY (reference only).',
+        'sp_96': 'S&P 9-to-6M return (~69% correlation with future GDP).',
+        'stoxx_96': 'STOXX 9-to-6M return as global leading indicator.',
+    }
+    return d.get(gkey, '')
+
+def _build_stoxx_96_table_html(history):
+    stoxx = history['stoxx600'].dropna()
+    if len(stoxx) < 200:
+        return ''
+    i9, i6, ic = max(0, len(stoxx) - 189), max(0, len(stoxx) - 126), len(stoxx) - 1
+    d9 = stoxx.index[i9].strftime('%d/%m/%Y')
+    d6 = stoxx.index[i6].strftime('%d/%m/%Y')
+    dc = stoxx.index[ic].strftime('%d/%m/%Y')
+    p9, p6, pc = float(stoxx.iloc[i9]), float(stoxx.iloc[i6]), float(stoxx.iloc[ic])
+    r96 = (p6 - p9) / p9 * 100 if p9 != 0 else 0
+    r6c = (pc - p6) / p6 * 100 if p6 != 0 else 0
+    sc = '#28a745' if r96 >= 0 else '#dc3545'
+    sig = '📈 Bullish' if r96 >= 0 else '📉 Bearish'
+    mc = '#28a745' if r6c >= 0 else '#dc3545'
+    return f'''<h4 style="margin:20px 0 10px;">STOXX 600 — 9-to-6M Signal</h4>
+    <table style="width:100%;max-width:800px;margin:auto;border-collapse:collapse;font-size:0.9em;border:1px solid #ddd;">
+      <tr style="background:#f5f5f5;">
+        <th style="padding:8px;border:1px solid #ddd;">Metric</th>
+        <th style="padding:8px;border:1px solid #ddd;">Date</th>
+        <th style="padding:8px;border:1px solid #ddd;text-align:right;">Value</th>
+      </tr>
+      <tr><td style="padding:7px;border:1px solid #ddd;">Price 9M Ago</td>
+          <td style="padding:7px;border:1px solid #ddd;">{d9}</td>
+          <td style="padding:7px;border:1px solid #ddd;text-align:right;">{p9:,.0f}</td></tr>
+      <tr><td style="padding:7px;border:1px solid #ddd;">Price 6M Ago</td>
+          <td style="padding:7px;border:1px solid #ddd;">{d6}</td>
+          <td style="padding:7px;border:1px solid #ddd;text-align:right;">{p6:,.0f}</td></tr>
+      <tr style="background:#f0fff4;"><td style="padding:7px;border:1px solid #ddd;font-weight:bold;">9→6M Return</td>
+          <td style="padding:7px;border:1px solid #ddd;">{d9}→{d6}</td>
+          <td style="padding:7px;border:1px solid #ddd;text-align:right;font-weight:bold;color:{sc};">{r96:+.1f}%</td></tr>
+      <tr><td style="padding:7px;border:1px solid #ddd;">Current</td>
+          <td style="padding:7px;border:1px solid #ddd;">{dc}</td>
+          <td style="padding:7px;border:1px solid #ddd;text-align:right;">{pc:,.0f}</td></tr>
+      <tr><td style="padding:7px;border:1px solid #ddd;">6M→Now Return</td>
+          <td style="padding:7px;border:1px solid #ddd;">{d6}→{dc}</td>
+          <td style="padding:7px;border:1px solid #ddd;text-align:right;color:{mc};">{r6c:+.1f}%</td></tr>
+      <tr style="background:#f8f8f8;"><td style="padding:7px;border:1px solid #ddd;font-weight:bold;" colspan="2">Signal</td>
+          <td style="padding:7px;border:1px solid #ddd;text-align:right;font-weight:bold;color:{sc};">{sig}</td></tr>
+    </table>'''
+
 # ============================================================================
 # METRICS & SCORING
 # ============================================================================
@@ -577,16 +612,16 @@ def get_graph_key(item_text):
 def calculate_metrics(data, history, today):
     metrics = {}
 
-    metrics['yield_curve_10_2']      = data['10yr_yield'] - data['2yr_yield']
-    metrics['yield_curve_10ff']      = data['10yr_yield'] - data['fed_funds']
-    metrics['real_rate_10yr']        = data['real_rate_10yr']
-    metrics['real_rate_2yr']         = data['real_rate_2yr']
-    metrics['copper_gold_ratio']     = data['copper'] / data['gold'] if data['gold'] != 0 else 0
+    metrics['yield_curve_10_2'] = data['10yr_yield'] - data['2yr_yield']
+    metrics['yield_curve_10ff'] = data['10yr_yield'] - data['fed_funds']
+    metrics['real_rate_10yr'] = data['real_rate_10yr']
+    metrics['real_rate_2yr'] = data['real_rate_2yr']
+    metrics['copper_gold_ratio'] = data['copper'] / data['gold'] if data['gold'] != 0 else 0
 
     phase = detect_cycle_phase(metrics['yield_curve_10_2'], metrics['real_rate_10yr'],
                                data['ism_manufacturing'], data['earnings_growth'])
-    metrics['phase']    = phase
-    phase_cfg           = CYCLE_PHASE_CONFIG[phase]
+    metrics['phase'] = phase
+    phase_cfg = CYCLE_PHASE_CONFIG[phase]
 
     tailwinds, headwinds, neutrals = [], [], []
     score = 50
@@ -596,10 +631,10 @@ def calculate_metrics(data, history, today):
     yc = metrics['yield_curve_10_2']
     if yc > 1.0:
         score += W['yield_curve_10_2']
-        tailwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — Steep curve (strong expansion signal)")
+        tailwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — Steep (expansion signal)")
     elif yc > 0.5:
         score += int(W['yield_curve_10_2'] * 0.7)
-        tailwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — Positive (expansion)")
+        tailwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — Positive")
     elif yc > 0:
         score += int(W['yield_curve_10_2'] * 0.3)
         neutrals.append(f"10Yr-2Yr Spread: {yc:.2f}% — Barely positive")
@@ -608,7 +643,7 @@ def calculate_metrics(data, history, today):
         headwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — Slightly inverted")
     else:
         score -= W['yield_curve_10_2']
-        headwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — INVERTED (recession signal)")
+        headwinds.append(f"10Yr-2Yr Spread: {yc:.2f}% — INVERTED (recession)")
 
     # Real rate 10Yr
     rr10 = metrics['real_rate_10yr']
@@ -629,13 +664,13 @@ def calculate_metrics(data, history, today):
     metrics['earnings_growth'] = eg
     if eg > 10:
         score += W['earnings_growth']
-        tailwinds.append(f"Earnings Growth (fwd 12M): {eg:.1f}% — Strong")
+        tailwinds.append(f"Earnings Growth: {eg:.1f}% — Strong")
     elif eg > 5:
         score += int(W['earnings_growth'] * 0.6)
-        tailwinds.append(f"Earnings Growth (fwd 12M): {eg:.1f}% — Positive")
+        tailwinds.append(f"Earnings Growth: {eg:.1f}% — Positive")
     else:
         score -= W['earnings_growth']
-        headwinds.append(f"Earnings Growth (fwd 12M): {eg:.1f}% — Negative")
+        headwinds.append(f"Earnings Growth: {eg:.1f}% — Negative")
 
     # MACD
     macd_lb = False
@@ -643,10 +678,10 @@ def calculate_metrics(data, history, today):
         spc = history['sp500'].dropna()
         if len(spc) >= 40:
             ml, sl, _ = compute_macd(spc)
-            macd_lb   = bool(ml.iloc[-1] > sl.iloc[-1])
+            macd_lb = bool(ml.iloc[-1] > sl.iloc[-1])
     except Exception:
         pass
-    metrics['macd_long_bullish']  = macd_lb
+    metrics['macd_long_bullish'] = macd_lb
     if macd_lb:
         score += W['macd_long']
         tailwinds.append("LazyMan MACD: Long Buy → Bull signal")
@@ -662,51 +697,37 @@ def calculate_metrics(data, history, today):
         tailwinds.append(f"Fed BS Growth: {fbs:.1f}% YoY — Easing")
     elif fbs > 0:
         score += int(W['fed_bs_growth'] * 0.5)
-        tailwinds.append(f"Fed BS Growth: {fbs:.1f}% YoY — Slight easing")
+        tailwinds.append(f"Fed BS Growth: {fbs:.1f}% — Slight easing")
     else:
         score -= W['fed_bs_growth']
-        headwinds.append(f"Fed BS Growth: {fbs:.1f}% YoY — Tightening")
+        headwinds.append(f"Fed BS Growth: {fbs:.1f}% — Tightening")
 
     # VIX trend
     vt = data['vix_trend']
     vix_val = float(data['vix'])
     if vt > 0:
         score += W['vix_trend']
-        tailwinds.append(f"VIX: {vix_val:.1f} — Healthy, declining")
+        tailwinds.append(f"VIX: {vix_val:.1f} — Healthy declining trend")
     elif vt < 0:
         score -= W['vix_trend']
         headwinds.append(f"VIX: {vix_val:.1f} — Complacency or panic")
 
-    # S&P 9-6M return
+    # S&P 9-6M
     sp = history['sp500']
+    sp96 = 0
     if len(sp) > 200:
-        p9  = float(sp.iloc[max(0, len(sp)-189)])
-        p6  = float(sp.iloc[max(0, len(sp)-126)])
-        sp96 = (p6-p9)/p9*100 if p9 != 0 else 0
-    else:
-        sp96 = 0
+        p9 = float(sp.iloc[max(0, len(sp) - 189)])
+        p6 = float(sp.iloc[max(0, len(sp) - 126)])
+        sp96 = (p6 - p9) / p9 * 100 if p9 != 0 else 0
     metrics['sp_96_return'] = sp96
     if sp96 > 5:
         score += W['sp_96']
-        tailwinds.append(f"S&P 9-6M Return: {sp96:.2f}% — Strong leading signal")
+        tailwinds.append(f"S&P 9-6M: {sp96:.2f}% — Strong leading signal")
     elif sp96 > 0:
         score += int(W['sp_96'] * 0.5)
-        tailwinds.append(f"S&P 9-6M Return: {sp96:.2f}% — Positive")
+        tailwinds.append(f"S&P 9-6M: {sp96:.2f}% — Positive")
     else:
-        headwinds.append(f"S&P 9-6M Return: {sp96:.2f}% — Negative")
-
-    # STOXX 9-6M return
-    st = history['stoxx600']
-    if len(st) > 200:
-        p9  = float(st.iloc[max(0, len(st)-189)])
-        p6  = float(st.iloc[max(0, len(st)-126)])
-        st96 = (p6-p9)/p9*100 if p9 != 0 else 0
-    else:
-        st96 = 0
-    metrics['stoxx_96_return'] = st96
-    if st96 > 0:
-        score += W['stoxx_96']
-        tailwinds.append(f"STOXX 9-6M Return: {st96:.2f}% — Positive global signal")
+        headwinds.append(f"S&P 9-6M: {sp96:.2f}% — Negative")
 
     # Manufacturing PMI
     mf = data['ism_manufacturing']
@@ -732,7 +753,7 @@ def calculate_metrics(data, history, today):
     # Building permits
     bp = data['building_permits']
     bph = history['building_permits']
-    bp_chg = float(bph.iloc[-1]-bph.iloc[-2]) if len(bph) > 1 else 0
+    bp_chg = float(bph.iloc[-1] - bph.iloc[-2]) if len(bph) > 1 else 0
     if bp_chg > 0:
         score += W['building_permits']
         tailwinds.append(f"Building Permits: {bp:.2f}M — Rising")
@@ -771,15 +792,15 @@ def calculate_metrics(data, history, today):
     boost = phase_cfg['boost']
     score += boost
     if boost > 0:
-        tailwinds.append(f"Cycle Phase: {phase_cfg['label']} — Score +{boost}")
+        tailwinds.append(f"Cycle Phase: {phase_cfg['label']} — +{boost} pts")
     elif boost < 0:
-        headwinds.append(f"Cycle Phase: {phase_cfg['label']} — Score {boost}")
+        headwinds.append(f"Cycle Phase: {phase_cfg['label']} — {boost} pts")
 
     score = max(0, min(150, int(score)))
     metrics['score_raw'] = score
 
     if phase_cfg.get('force_short'):
-        bias  = 'Short (recession regime)'
+        bias = 'Short (recession regime)'
         score = min(score, 30)
     elif score >= 80:
         bias = 'Long — High Conviction'
@@ -793,7 +814,7 @@ def calculate_metrics(data, history, today):
         bias = 'Neutral'
 
     metrics['conviction'] = abs(score - 50) / 50.0
-    metrics['bias']       = bias
+    metrics['bias'] = bias
     metrics['phase_label'] = phase_cfg['label']
 
     return metrics, tailwinds, headwinds, neutrals, bias, score
@@ -805,64 +826,52 @@ def calculate_metrics(data, history, today):
 @st.cache_data(ttl=86400)
 def run_backtest():
     quarters = pd.date_range(start='2014-01-01', end='2024-01-01', freq='QE')
-    results  = []
+    results = []
 
     try:
         sp_hist = yf.download('^GSPC', start='2013-01-01', end='2024-06-01', progress=False)['Close']
         sp_hist.index = pd.DatetimeIndex(sp_hist.index).tz_localize(None)
     except Exception:
-        st.warning("Could not fetch S&P data")
         return pd.DataFrame(), {}
 
     try:
-        y10_hist = fred.get_series('DGS10', observation_start='2010-01-01')
-        y10_hist = normalize_index(y10_hist)
-        y2_hist  = fred.get_series('DGS2', observation_start='2010-01-01')
-        y2_hist  = normalize_index(y2_hist)
-        ff_hist  = fred.get_series('FEDFUNDS', observation_start='2010-01-01')
-        ff_hist  = normalize_index(ff_hist)
-        be_hist  = fred.get_series('T5YIFR', observation_start='2010-01-01')
-        be_hist  = normalize_index(be_hist)
-        pmi_hist = fred.get_series('NAPM', observation_start='2010-01-01')
-        pmi_hist = normalize_index(pmi_hist)
+        y10_hist = normalize_index(fred.get_series('DGS10', observation_start='2010-01-01'))
+        y2_hist = normalize_index(fred.get_series('DGS2', observation_start='2010-01-01'))
+        ff_hist = normalize_index(fred.get_series('FEDFUNDS', observation_start='2010-01-01'))
+        be_hist = normalize_index(fred.get_series('T5YIFR', observation_start='2010-01-01'))
+        pmi_hist = normalize_index(fred.get_series('NAPM', observation_start='2010-01-01'))
     except Exception:
-        st.warning("Could not fetch FRED data for backtest")
         return pd.DataFrame(), {}
 
-    def _get_val(series, date, default=0):
+    def _val(series, date, default=0):
         try:
             sub = series[series.index <= date]
             return float(sub.iloc[-1]) if not sub.empty else default
         except Exception:
             return default
 
-    def _get_sp_return(sp, date_start, date_end):
+    def _sp_ret(sp, d0, d1):
         try:
-            sub_s = sp[sp.index <= date_start]
-            sub_e = sp[sp.index <= date_end]
-            if sub_s.empty or sub_e.empty:
-                return 0.0
-            p0 = float(sub_s.iloc[-1])
-            p1 = float(sub_e.iloc[-1])
+            p0 = float(sp[sp.index <= d0].iloc[-1])
+            p1 = float(sp[sp.index <= d1].iloc[-1])
             return (p1 - p0) / p0 if p0 != 0 else 0.0
         except Exception:
             return 0.0
 
-    def _score_at_date(date):
-        y10  = _get_val(y10_hist, date, 2.5)
-        y2   = _get_val(y2_hist,  date, 2.0)
-        ff   = _get_val(ff_hist,  date, 1.5)
-        be   = _get_val(be_hist,  date, 2.0)
-        pmi  = _get_val(pmi_hist, date, 51.0)
+    def _score_at(date):
+        y10 = _val(y10_hist, date, 2.5)
+        y2 = _val(y2_hist, date, 2.0)
+        ff = _val(ff_hist, date, 1.5)
+        be = _val(be_hist, date, 2.0)
+        pmi = _val(pmi_hist, date, 51.0)
+        rr10 = y10 - be
+        yc = y10 - y2
 
-        rr10    = y10 - be
-        yc_10_2 = y10 - y2
-        phase = detect_cycle_phase(yc_10_2, rr10, pmi, 5.0)
-
+        phase = detect_cycle_phase(yc, rr10, pmi, 5.0)
         s = 50
-        s += 18 if yc_10_2 > 1.0 else (12 if yc_10_2 > 0.5 else (5 if yc_10_2 > 0 else (-12 if yc_10_2 > -0.5 else -18)))
-        s += 7  if rr10 < -1  else (4 if rr10 < 0 else (-7 if rr10 > 1 else 0))
-        s += 4  if pmi   > 52 else (2 if pmi > 50 else -4)
+        s += (18 if yc > 1.0 else 12 if yc > 0.5 else 5 if yc > 0 else -12 if yc > -0.5 else -18)
+        s += (7 if rr10 < -1 else 4 if rr10 < 0 else -7 if rr10 > 1 else 0)
+        s += (4 if pmi > 52 else 2 if pmi > 50 else -4)
         s += CYCLE_PHASE_CONFIG[phase]['boost']
         s = max(0, min(150, s))
 
@@ -874,69 +883,52 @@ def run_backtest():
             bias = 'Short'
         else:
             bias = 'Neutral'
-
         return s, bias, phase
 
     for i in range(len(quarters) - 1):
-        q_date      = quarters[i]
-        q_next      = quarters[i + 1]
-        score, bias, phase = _score_at_date(q_date)
-        sp_ret      = _get_sp_return(sp_hist, q_date, q_next)
-
-        if bias == 'Long':
-            strat_ret = sp_ret
-        elif bias == 'Short':
-            strat_ret = -sp_ret
-        else:
-            strat_ret = 0.0
-
-        strat_ret -= 0.001
-
-        results.append({
-            'Date':         q_date,
-            'Score':        score,
-            'Bias':         bias,
-            'Phase':        phase,
-            'SP500_Return': round(sp_ret * 100, 2),
-            'Strat_Return': round(strat_ret * 100, 2),
-        })
+        q0 = quarters[i]
+        q1 = quarters[i + 1]
+        sc, bi, ph = _score_at(q0)
+        sp_ret = _sp_ret(sp_hist, q0, q1)
+        strat_ret = (sp_ret if bi == 'Long' else -sp_ret if bi == 'Short' else 0.0) - 0.001
+        results.append({'Date': q0, 'Score': sc, 'Bias': bi, 'Phase': ph,
+                        'SP500_Return': round(sp_ret * 100, 2),
+                        'Strat_Return': round(strat_ret * 100, 2)})
 
     if not results:
         return pd.DataFrame(), {}
 
-    df            = pd.DataFrame(results).set_index('Date')
-    df['SP500_Cum']  = (1 + df['SP500_Return'] / 100).cumprod()
-    df['Strat_Cum']  = (1 + df['Strat_Return'] / 100).cumprod()
+    df = pd.DataFrame(results).set_index('Date')
+    df['SP500_Cum'] = (1 + df['SP500_Return'] / 100).cumprod()
+    df['Strat_Cum'] = (1 + df['Strat_Return'] / 100).cumprod()
 
-    n  = len(df)
-    sp_total   = df['SP500_Cum'].iloc[-1] - 1
-    st_total   = df['Strat_Cum'].iloc[-1] - 1
-    sp_ann     = (1 + sp_total) ** (4 / n) - 1
-    st_ann     = (1 + st_total) ** (4 / n) - 1
-    st_vol     = df['Strat_Return'].std() / 100 * 2
-    sp_vol     = df['SP500_Return'].std() / 100 * 2
-    st_sharpe  = (st_ann - 0.02) / st_vol  if st_vol  != 0 else 0
-    sp_sharpe  = (sp_ann - 0.02) / sp_vol  if sp_vol  != 0 else 0
-    st_mdd     = (df['Strat_Cum'] / df['Strat_Cum'].cummax() - 1).min()
-    sp_mdd     = (df['SP500_Cum'] / df['SP500_Cum'].cummax() - 1).min()
-
-    correct     = ((df['Bias'] == 'Long')  & (df['SP500_Return'] > 0)) | \
-                  ((df['Bias'] == 'Short') & (df['SP500_Return'] < 0))
-    accuracy   = correct.mean()
-    hit_rate   = (df['Strat_Return'] > 0).mean()
+    n = len(df)
+    sp_tot = df['SP500_Cum'].iloc[-1] - 1
+    st_tot = df['Strat_Cum'].iloc[-1] - 1
+    sp_ann = (1 + sp_tot) ** (4 / n) - 1
+    st_ann = (1 + st_tot) ** (4 / n) - 1
+    st_vol = df['Strat_Return'].std() / 100 * 2
+    sp_vol = df['SP500_Return'].std() / 100 * 2
+    st_sharpe = (st_ann - 0.02) / st_vol if st_vol != 0 else 0
+    sp_sharpe = (sp_ann - 0.02) / sp_vol if sp_vol != 0 else 0
+    st_mdd = (df['Strat_Cum'] / df['Strat_Cum'].cummax() - 1).min()
+    sp_mdd = (df['SP500_Cum'] / df['SP500_Cum'].cummax() - 1).min()
+    correct = ((df['Bias'] == 'Long') & (df['SP500_Return'] > 0)) | ((df['Bias'] == 'Short') & (df['SP500_Return'] < 0))
+    accuracy = correct.mean()
+    hit_rate = (df['Strat_Return'] > 0).mean()
 
     summary = {
-        'Strategy Total Return':   f"{st_total:.1%}",
-        'S&P 500 Total Return':    f"{sp_total:.1%}",
-        'Strategy Ann. Return':    f"{st_ann:.1%}",
-        'S&P 500 Ann. Return':     f"{sp_ann:.1%}",
-        'Strategy Sharpe':         f"{st_sharpe:.2f}",
-        'S&P 500 Sharpe':          f"{sp_sharpe:.2f}",
-        'Strategy Max Drawdown':   f"{st_mdd:.1%}",
-        'S&P 500 Max Drawdown':    f"{sp_mdd:.1%}",
-        'Direction Accuracy':      f"{accuracy:.1%}",
-        'Quarterly Hit Rate':      f"{hit_rate:.1%}",
-        'Total Quarters':          n,
+        'Strategy Total Return': f"{st_tot:.1%}",
+        'S&P 500 Total Return': f"{sp_tot:.1%}",
+        'Strategy Ann. Return': f"{st_ann:.1%}",
+        'S&P 500 Ann. Return': f"{sp_ann:.1%}",
+        'Strategy Sharpe': f"{st_sharpe:.2f}",
+        'S&P 500 Sharpe': f"{sp_sharpe:.2f}",
+        'Strategy Max Drawdown': f"{st_mdd:.1%}",
+        'S&P 500 Max Drawdown': f"{sp_mdd:.1%}",
+        'Direction Accuracy': f"{accuracy:.1%}",
+        'Quarterly Hit Rate': f"{hit_rate:.1%}",
+        'Total Quarters': n,
     }
     return df, summary
 
@@ -945,11 +937,11 @@ def run_backtest():
 # ============================================================================
 
 def generate_sector_tilt(bias, score, phase, conviction, preferred_sectors, portfolio_size):
-    today       = datetime.now()
+    today = datetime.now()
     three_m_ago = pd.Timestamp(today - timedelta(days=90))
-
     momentum = {}
-    pe_data  = {}
+    pe_data = {}
+
     for sector, info in ALL_SECTORS.items():
         try:
             hist = yf.Ticker(info['etf']).history(period='1y')['Close']
@@ -958,71 +950,158 @@ def generate_sector_tilt(bias, score, phase, conviction, preferred_sectors, port
             else:
                 if hasattr(hist.index, 'tz') and hist.index.tz is not None:
                     hist.index = hist.index.tz_localize(None)
+                else:
+                    hist.index = pd.DatetimeIndex(hist.index).tz_localize(None)
                 r1y = (hist.iloc[-1] - hist.iloc[0]) / hist.iloc[0] if hist.iloc[0] != 0 else 0
                 h3m = hist[hist.index >= three_m_ago]
-                r3m = (hist.iloc[-1] - h3m.iloc[0]) / h3m.iloc[0] if (not h3m.empty and h3m.iloc[0] != 0) else 0
+                r3m = ((hist.iloc[-1] - h3m.iloc[0]) / h3m.iloc[0]
+                       if not h3m.empty and h3m.iloc[0] != 0 else 0)
                 mom = 0.5 * r1y + 0.5 * r3m
         except Exception:
             mom = 0.0
         momentum[sector] = mom
-        zscore = get_pe_zscore(sector, info['etf'])
-        pe_data[sector]  = zscore
+        pe_data[sector] = get_pe_zscore(sector, info['etf'])
 
     rot = SECTOR_ROTATION.get(phase, SECTOR_ROTATION['mid'])
-
     adjusted = {}
     for sector in ALL_SECTORS:
         adj_mom = momentum[sector]
-        z       = pe_data[sector]
+        z = pe_data[sector]
         if z > 1.5:
             adj_mom *= 0.7
         elif z < -1.5:
             adj_mom *= 1.2
-        rotation_wt = rot.get(sector, 0.05)
-        adjusted[sector] = 0.5 * rotation_wt + 0.5 * adj_mom
+        adjusted[sector] = 0.5 * rot.get(sector, 0.05) + 0.5 * adj_mom
 
     sorted_s = sorted(adjusted, key=adjusted.get, reverse=True)
-
-    conv_clamped = max(0, min(1, conviction))
-    if 'Long' in bias:
-        long_pct  = 0.5 + 0.3 * conv_clamped
-        short_pct = 1 - long_pct
-    else:
-        long_pct  = 0.5
-        short_pct = 0.5
+    conv_clamped = max(0.0, min(1.0, conviction))
+    long_pct = (0.5 + 0.3 * conv_clamped) if 'Long' in bias else 0.5
+    short_pct = 1 - long_pct
 
     long_pool = sorted_s[:3]
     short_pool = [s for s in reversed(sorted_s) if s not in long_pool][:3]
-
     pairs = list(zip(long_pool, short_pool))
     n_pairs = len(pairs)
     if n_pairs == 0:
         return pd.DataFrame(), {}
 
-    long_alloc  = portfolio_size * long_pct  / n_pairs
+    long_alloc = portfolio_size * long_pct / n_pairs
     short_alloc = portfolio_size * short_pct / n_pairs
 
     rows = []
     for i, (ls, ss) in enumerate(pairs):
         rows.append({
-            'Pair':            f"Pair {i+1}",
-            'Long Sector':     ls,
-            'Long ETF':        ALL_SECTORS[ls]['etf'],
-            'Long Alloc':      f"${long_alloc:,.0f}",
-            'Short Sector':    ss,
-            'Short ETF':       ALL_SECTORS[ss]['etf'],
-            'Short Alloc':     f"${short_alloc:,.0f}",
-            'Long PE Z':       f"{pe_data[ls]:.2f}",
-            'Short PE Z':      f"{pe_data[ss]:.2f}",
+            'Pair': f"Pair {i+1}",
+            'Long Sector': ls,
+            'Long ETF': ALL_SECTORS[ls]['etf'],
+            'Long Alloc': f"${long_alloc:,.0f}",
+            'Short Sector': ss,
+            'Short ETF': ALL_SECTORS[ss]['etf'],
+            'Short Alloc': f"${short_alloc:,.0f}",
+            'Long PE Z': f"{pe_data[ls]:.2f}",
+            'Short PE Z': f"{pe_data[ss]:.2f}",
         })
-
     return pd.DataFrame(rows), {'long_pct': long_pct, 'short_pct': short_pct}
+
+# ============================================================================
+# HTML REPORT BUILDER
+# ============================================================================
+
+def build_html_section(items_list, data, history, metrics, today):
+    parts = []
+    for item in items_list:
+        gkey = get_graph_key(item)
+        fig = generate_graph(gkey, data, history, metrics, today)
+        img64 = _fig_to_b64(fig)
+
+        short_html = ''
+        sfig = generate_short_term_graph(gkey, history, today)
+        if sfig is not None:
+            s64 = _fig_to_b64(sfig)
+            short_html = (f'<h4 style="margin:15px 0 8px;color:#555;">Short-term View</h4>'
+                         f'<img src="data:image/png;base64,{s64}" '
+                         f'style="width:100%;max-width:800px;margin:auto;display:block;"/>')
+
+        desc = get_description(gkey)
+        desc_html = f'<p style="margin:12px 0;color:#555;font-size:0.9em;">{desc}</p>' if desc else ''
+
+        extra_html = ''
+        if gkey == 'stoxx_96':
+            extra_html = _build_stoxx_96_table_html(history)
+
+        parts.append(f'''<li><details>
+    <summary>{item}</summary>
+    <div style="padding:15px;background:#fafafa;border:1px solid #e0e0e0;border-top:none;">
+      <img src="data:image/png;base64,{img64}" style="width:100%;max-width:800px;margin:auto;display:block;"/>
+      {short_html}{desc_html}{extra_html}
+    </div>
+  </details></li>''')
+    return ''.join(parts)
+
+def generate_html_summary(tailwinds, headwinds, neutrals, bias, score, phase_label, data, history, metrics, today):
+    tw_html = build_html_section(tailwinds, data, history, metrics, today)
+    hw_html = build_html_section(headwinds, data, history, metrics, today)
+    nt_html = build_html_section(neutrals, data, history, metrics, today)
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Portfolio Bias Report</title>
+<style>
+body{{font-family:Segoe UI,sans-serif;padding:30px;background:#f5f5f5;color:#222;}}
+.container{{max-width:1000px;margin:auto;background:white;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}}
+h1{{color:#0d47a1;margin-bottom:6px;}}
+.meta{{color:#777;font-size:0.85em;margin-bottom:20px;}}
+.scorecard{{display:flex;gap:15px;margin-bottom:30px;flex-wrap:wrap;}}
+.card{{flex:1;min-width:150px;background:#f8f9fa;padding:15px;border:1px solid #e0e0e0;border-radius:6px;}}
+.card-label{{font-size:0.75em;text-transform:uppercase;color:#888;}}
+.card-value{{font-size:1.8em;font-weight:700;color:#0d47a1;}}
+h2{{margin:30px 0 15px;padding-bottom:8px;border-bottom:2px solid #ddd;}}
+h2.tw{{border-color:#4caf50;color:#2e7d32;}}
+h2.hw{{border-color:#f44336;color:#c62828;}}
+h2.nt{{border-color:#9e9e9e;}}
+ul{{list-style:none;padding:0;}}
+li{{margin-bottom:8px;}}
+details>summary{{cursor:pointer;padding:10px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:4px;font-weight:600;}}
+details[open]>summary{{background:#e8eaf6;}}
+</style></head><body>
+<div class="container">
+<h1>📊 Portfolio Bias &amp; Sector Tilt Report</h1>
+<p class="meta">Generated: {today.strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+
+<div class="scorecard">
+  <div class="card">
+    <div class="card-label">GDP Growth Score</div>
+    <div class="card-value">{score}<span style="font-size:0.4em;color:#888;"> / 150</span></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Recommended Bias</div>
+    <div class="card-value" style="font-size:1.1em;">{bias}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Cycle Phase</div>
+    <div class="card-value" style="font-size:1.1em;">{phase_label}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Conviction</div>
+    <div class="card-value">{metrics.get('conviction', 0):.0%}</div>
+  </div>
+</div>
+
+<h2 class="tw">✅ Tailwinds ({len(tailwinds)})</h2>
+<ul>{tw_html}</ul>
+
+<h2 class="hw">❌ Headwinds ({len(headwinds)})</h2>
+<ul>{hw_html}</ul>
+
+<h2 class="nt">⚖️ Neutrals ({len(neutrals)})</h2>
+<ul>{nt_html}</ul>
+
+</div></body></html>"""
 
 # ============================================================================
 # STREAMLIT UI
 # ============================================================================
 
-st.set_page_config(page_title="Portfolio Bias & Sector Tilt (Optimized)", layout="wide")
+st.set_page_config(page_title="Portfolio Bias & Sector Tilt", layout="wide")
 st.title("📊 Portfolio Bias & Sector Tilt Dashboard")
 
 with st.sidebar:
@@ -1030,18 +1109,18 @@ with st.sidebar:
     portfolio_size = st.number_input("Portfolio Size ($)", min_value=10000, value=100000, step=10000)
     preferred_sectors = st.multiselect("Preferred Sectors", list(ALL_SECTORS.keys()), default=[])
 
-tab1, tab2, tab3 = st.tabs(["📈 Live Analysis", "🎯 Sector Tilt", "📊 10Y Backtest"])
+tab1, tab2, tab3 = st.tabs(["📈 Analysis", "🎯 Sectors", "📊 Backtest"])
 
 with tab1:
-    if st.button("🔄 Run Live Analysis", type="primary"):
-        with st.spinner("Fetching macro data..."):
+    if st.button("🔄 Run Analysis", type="primary"):
+        with st.spinner("Fetching data..."):
             try:
                 data, history, today = fetch_data()
-                metrics, tailwinds, headwinds, neutrals, bias, score = calculate_metrics(data, history, today)
+                metrics, tw, hw, nt, bias, score = calculate_metrics(data, history, today)
 
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("GDP Score", f"{score}/150")
+                    st.metric("Score", f"{score}/150")
                 with col2:
                     st.metric("Bias", bias.split('—')[0].strip())
                 with col3:
@@ -1050,86 +1129,66 @@ with tab1:
                     st.metric("Phase", metrics['phase_label'])
 
                 st.divider()
-
-                col_tw, col_hw, col_n = st.columns(3)
+                col_tw, col_hw = st.columns(2)
                 with col_tw:
-                    st.subheader(f"✅ Tailwinds ({len(tailwinds)})")
-                    for tw in tailwinds[:5]:
-                        st.write(f"• {tw}")
+                    st.subheader(f"✅ Tailwinds ({len(tw)})")
+                    for t in tw[:6]:
+                        st.write(f"• {t}")
                 with col_hw:
-                    st.subheader(f"❌ Headwinds ({len(headwinds)})")
-                    for hw in headwinds[:5]:
-                        st.write(f"• {hw}")
-                with col_n:
-                    st.subheader(f"⚖️ Neutrals ({len(neutrals)})")
-                    for n in neutrals[:5]:
-                        st.write(f"• {n}")
+                    st.subheader(f"❌ Headwinds ({len(hw)})")
+                    for h in hw[:6]:
+                        st.write(f"• {h}")
 
-                st.session_state.data    = data
+                html_report = generate_html_summary(tw, hw, nt, bias, score, metrics['phase_label'], data, history, metrics, today)
+                st.download_button("📥 Download HTML Report", html_report, f"report_{today.date()}.html", "text/html")
+
+                st.session_state.data = data
                 st.session_state.history = history
                 st.session_state.metrics = metrics
-                st.session_state.bias    = bias
-                st.session_state.score   = score
-
-                st.success("✅ Analysis Complete!")
+                st.session_state.bias = bias
+                st.session_state.score = score
 
             except Exception as e:
-                st.error(f"❌ Error: {e}")
+                st.error(f"Error: {e}")
 
 with tab2:
     if 'metrics' in st.session_state:
-        st.subheader("🎯 Sector Pair Trading")
-
-        with st.spinner("Fetching sector data..."):
+        st.subheader("🎯 Sector Tilt Recommendations")
+        with st.spinner("Computing sectors..."):
             tilt_df, _ = generate_sector_tilt(
                 st.session_state.bias, st.session_state.score,
                 st.session_state.metrics['phase'], st.session_state.metrics['conviction'],
                 preferred_sectors, portfolio_size)
-
             if not tilt_df.empty:
                 st.dataframe(tilt_df, use_container_width=True)
-                st.download_button(
-                    "📥 Download CSV",
-                    data=tilt_df.to_csv(index=False),
-                    file_name=f"sector_tilt.csv",
-                    mime="text/csv")
+                st.download_button("📥 Download CSV", tilt_df.to_csv(index=False), "sectors.csv", "text/csv")
     else:
-        st.info("Run **Live Analysis** first")
+        st.info("Run Analysis first")
 
 with tab3:
-    if st.button("▶️ Run 10Y Backtest", type="primary"):
-        with st.spinner("Running backtest..."):
+    if st.button("▶️ Run Backtest", type="primary"):
+        with st.spinner("Running 10Y backtest..."):
             bt_df, bt_summary = run_backtest()
-
             if not bt_df.empty:
-                st.success("✅ Complete!")
-
-                col1, col2, col3, col4, col5 = st.columns(5)
+                col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Strat Sharpe", bt_summary.get('Strategy Sharpe', 'N/A'))
                 with col2:
                     st.metric("SP Sharpe", bt_summary.get('S&P 500 Sharpe', 'N/A'))
                 with col3:
                     st.metric("Accuracy", bt_summary.get('Direction Accuracy', 'N/A'))
-                with col4:
-                    st.metric("Hit Rate", bt_summary.get('Quarterly Hit Rate', 'N/A'))
-                with col5:
-                    st.metric("Quarters", bt_summary.get('Total Quarters', 'N/A'))
 
-                fig, ax = plt.subplots(figsize=(12, 6))
-                ax.plot(bt_df.index, bt_df['SP500_Cum'], label='S&P 500', linewidth=2.5)
-                ax.plot(bt_df.index, bt_df['Strat_Cum'], label='Strategy', linewidth=2.5)
-                ax.set_xlabel('Date')
-                ax.set_ylabel('Cumulative Return')
-                ax.set_title('10Y Backtest: Cumulative Returns')
+                fig, ax = plt.subplots(figsize=(12, 5))
+                ax.plot(bt_df.index, bt_df['SP500_Cum'], label='S&P 500', linewidth=2)
+                ax.plot(bt_df.index, bt_df['Strat_Cum'], label='Strategy', linewidth=2)
+                ax.set_title('10Y Cumulative Returns')
                 ax.legend()
                 ax.grid(alpha=0.3)
                 st.pyplot(fig)
 
-                st.download_button("📥 Download Results", bt_df.to_csv(), "backtest.csv", "text/csv")
-
 st.markdown("---")
-st.caption("✅ Production-Ready | 10Y Quarterly Backtest | Cycle-Aware Sector Rotation")
+st.caption("✅ Complete | 10Y Backtest | HTML Reports | Sector Tilt")
+
 
 
 
