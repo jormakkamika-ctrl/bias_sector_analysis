@@ -6,3 +6,4 @@ yfinance
 numpy
 requests
 beautifulsoup4
+scikit-learn
