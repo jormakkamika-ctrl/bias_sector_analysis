@@ -1619,6 +1619,40 @@ def generate_sector_tilt(bias, score, phase, conviction,
 # ============================================================================
 # HTML REPORT BUILDER
 # ============================================================================
+def build_html_section(items_list, data, history, metrics, today):
+    parts = []
+    for item in items_list:
+        gkey   = get_graph_key(item)
+        fig    = generate_graph(gkey, data, history, metrics, today)
+        img64  = _fig_to_b64(fig)
+
+        short_html = ''
+        sfig = generate_short_term_graph(gkey, history, today)
+        if sfig is not None:
+            s64        = _fig_to_b64(sfig)
+            short_html = (
+                '<h4 style="margin:15px 0 8px;color:#555;">Short-term View</h4>'
+                f'<img src="data:image/png;base64,{s64}" '
+                'style="width:100%;max-width:800px;margin:auto;display:block;"/>')
+
+        desc      = get_description(gkey)
+        desc_html = (f'<p style="margin:12px 0;color:#555;font-size:0.9em;">'
+                     f'{desc}</p>') if desc else ''
+
+        extra_html = ''
+        if gkey == 'stoxx_96':
+            extra_html = _build_stoxx_96_table_html(history)
+
+        parts.append(f'''<li><details>
+  <summary>{item}</summary>
+  <div style="padding:15px;background:#fafafa;border:1px solid #e0e0e0;border-top:none;">
+    <img src="data:image/png;base64,{img64}"
+         style="width:100%;max-width:800px;margin:auto;display:block;"/>
+    {short_html}{desc_html}{extra_html}
+  </div>
+</details></li>''')
+    return ''.join(parts)
+
 
 def generate_html_summary(tailwinds, headwinds, neutrals, bias, score,
                            phase_label, data, history, metrics, today):
@@ -1773,5 +1807,6 @@ with tab3:
 
 st.markdown("---")
 st.caption("✅ Complete | 10Y Backtest | HTML Reports | Sector Tilt")
+
 
 
