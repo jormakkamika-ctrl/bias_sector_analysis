@@ -12,7 +12,6 @@ import warnings
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 warnings.filterwarnings('ignore')
-from ta.momentum import RSIIndicator
 
 # ============================================================================
 # CONFIGURATION
@@ -1750,6 +1749,14 @@ details[open]>summary{{background:#e8eaf6;}}
 # -----------------------------------------------------------
 # METRIC FETCHING WITH CACHING
 # -----------------------------------------------------------
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0).rolling(window=period).mean()
+    loss = -delta.where(delta < 0, 0).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_sector_top5(sector_name: str, direction: str = "long") -> pd.DataFrame:
     """
@@ -1770,7 +1777,7 @@ def fetch_sector_top5(sector_name: str, direction: str = "long") -> pd.DataFrame
                 continue
             close = hist["Close"].squeeze()
             # RSI (14-day)
-            rsi_val = RSIIndicator(close=close, window=14).rsi().iloc[-1]
+            rsi_val = calculate_rsi(close, 14).iloc[-1]
             # Momentum: 3M and 12M returns
             mom_3m = (close.iloc[-1] / close.iloc[-63] - 1) * 100 if len(close) >= 63 else np.nan
             mom_12m = (close.iloc[-1] / close.iloc[0] - 1) * 100 if len(close) >= 252 else np.nan
