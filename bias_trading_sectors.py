@@ -12,6 +12,7 @@ import warnings
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 warnings.filterwarnings('ignore')
+from ta.momentum import RSIIndicator
 
 # ============================================================================
 # CONFIGURATION
@@ -107,6 +108,34 @@ SECTOR_PE_HISTORY = {
     'Consumer Staples':       {'mean': 20.0, 'std': 3.0},
     'Real Estate':            {'mean': 35.0, 'std': 8.0},
     'Communication Services': {'mean': 20.0, 'std': 5.0},
+}
+
+# -----------------------------------------------------------
+# SECTOR CONSTITUENTS (GICS-based, top liquid stocks per sector)
+# -----------------------------------------------------------
+SECTOR_TICKERS = {
+    "Utilities": ["NEE", "DUK", "SO", "D", "AEP", "EXC", "SRE", "PCG", "ED", "ES",
+                  "XEL", "ETR", "FE", "PPL", "AES", "AWK", "CNP", "CMS", "LNT", "PNW"],
+    "Consumer Staples": ["PG", "KO", "PEP", "COST", "WMT", "PM", "MO", "MDLZ", "CL",
+                         "KHC", "GIS", "K", "HSY", "SJM", "CAG", "HRL", "TSN", "CPB", "MKC", "CHD"],
+    "Financials": ["JPM", "BAC", "WFC", "GS", "MS", "C", "BLK", "SCHW", "AXP", "USB",
+                   "PNC", "TFC", "COF", "MET", "PRU", "AFL", "ALL", "CB", "AON", "MMC"],
+    "Energy": ["XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "VLO", "PXD", "OXY",
+               "HAL", "DVN", "HES", "BKR", "FANG", "MRO", "APA", "CTRA", "OVV", "PR"],
+    "Technology": ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CSCO", "ACN", "ADBE", "CRM",
+                   "AMD", "INTC", "QCOM", "TXN", "IBM", "NOW", "INTU", "AMAT", "LRCX", "KLAC", "ADI"],
+    "Healthcare": ["JNJ", "UNH", "LLY", "PFE", "ABBV", "MRK", "TMO", "DHR", "ABT",
+                   "CVS", "BMY", "AMGN", "MDT", "ISRG", "SYK", "ZBH", "BDX", "CI", "ELV", "HUM"],
+    "Consumer Discretionary": ["AMZN", "TSLA", "HD", "MCD", "NKE", "SBUX", "TJX", "LOW",
+                                "BKNG", "CMG", "GM", "F", "ORLY", "AZO", "ROST", "DHI", "LEN", "PHM", "YUM", "DRI"],
+    "Industrials": ["GE", "HON", "CAT", "UPS", "BA", "RTX", "DE", "LMT", "MMM", "FDX",
+                    "ETN", "EMR", "ITW", "GD", "NOC", "PH", "ROK", "IR", "CMI", "XYL"],
+    "Materials": ["LIN", "APD", "SHW", "ECL", "FCX", "NEM", "NUE", "VMC", "MLM", "ALB",
+                  "DD", "DOW", "PPG", "IP", "PKG", "CF", "MOS", "CE", "FMC", "RPM"],
+    "Real Estate": ["PLD", "AMT", "EQIX", "CCI", "PSA", "SPG", "O", "DLR", "WELL", "AVB",
+                    "EQR", "MAA", "UDR", "ESS", "CPT", "ARE", "VTR", "PEAK", "HST", "KIM"],
+    "Communication Services": ["META", "GOOGL", "GOOG", "NFLX", "DIS", "CMCSA", "VZ", "T",
+                                "CHTR", "TMUS", "ATVI", "EA", "WBD", "PARA", "OMC", "IPG", "FOXA", "FOX", "NWSA", "NWS"],
 }
 
 # ============================================================================
@@ -1718,6 +1747,205 @@ details[open]>summary{{background:#e8eaf6;}}
 </div></body></html>"""
 
 
+# -----------------------------------------------------------
+# METRIC FETCHING WITH CACHING
+# -----------------------------------------------------------
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_sector_top5(sector_name: str, direction: str = "long") -> pd.DataFrame:
+    """
+    Fetch all tickers in a sector, calculate metrics, rank and return top 5.
+    direction: 'long' (calls/buy) or 'short' (puts/sell)
+    """
+    tickers = SECTOR_TICKERS.get(sector_name, [])
+    if not tickers:
+        return pd.DataFrame()
+    results = []
+    for symbol in tickers:
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            # --- Price History for RSI & Momentum ---
+            hist = yf.download(symbol, period="1y", interval="1d", progress=False, auto_adjust=True)
+            if hist.empty or len(hist) < 20:
+                continue
+            close = hist["Close"].squeeze()
+            # RSI (14-day)
+            rsi_val = RSIIndicator(close=close, window=14).rsi().iloc[-1]
+            # Momentum: 3M and 12M returns
+            mom_3m = (close.iloc[-1] / close.iloc[-63] - 1) * 100 if len(close) >= 63 else np.nan
+            mom_12m = (close.iloc[-1] / close.iloc[0] - 1) * 100 if len(close) >= 252 else np.nan
+            blended_mom = 0.5 * mom_3m + 0.5 * mom_12m if not np.isnan(mom_3m) and not np.isnan(mom_12m) else mom_3m
+            # P/E Ratio
+            pe = info.get("trailingPE", np.nan)
+            # Earnings Growth (YoY quarterly)
+            eg = info.get("earningsQuarterlyGrowth", np.nan)
+            if eg is not None and not np.isnan(eg):
+                eg = eg * 100 # convert to %
+            # Revenue Growth
+            rev_growth = info.get("revenueGrowth", np.nan)
+            if rev_growth is not None and not np.isnan(rev_growth):
+                rev_growth = rev_growth * 100
+            # Debt-to-Equity
+            de_ratio = info.get("debtToEquity", np.nan)
+            # Market Cap (for context)
+            mkt_cap = info.get("marketCap", np.nan)
+            mkt_cap_str = f"${mkt_cap/1e9:.1f}B" if mkt_cap and not np.isnan(mkt_cap) else "N/A"
+            results.append({
+                "Symbol": symbol,
+                "Name": info.get("shortName", symbol)[:25],
+                "RSI": round(rsi_val, 1) if not np.isnan(rsi_val) else np.nan,
+                "PE Ratio": round(pe, 1) if pe and not np.isnan(pe) else np.nan,
+                "EPS Growth %": round(eg, 1) if eg and not np.isnan(eg) else np.nan,
+                "Revenue Growth %": round(rev_growth, 1) if rev_growth and not np.isnan(rev_growth) else np.nan,
+                "Momentum 3M %": round(mom_3m, 1) if not np.isnan(mom_3m) else np.nan,
+                "Momentum 12M %": round(mom_12m, 1) if not np.isnan(mom_12m) else np.nan,
+                "D/E Ratio": round(de_ratio, 2) if de_ratio and not np.isnan(de_ratio) else np.nan,
+                "Mkt Cap": mkt_cap_str,
+            })
+        except Exception:
+            continue
+    if not results:
+        return pd.DataFrame()
+    df = pd.DataFrame(results)
+    # --- COMPOSITE SCORING ---
+    # For LONG (calls/buy): favor oversold RSI, high growth, positive momentum, low PE
+    # For SHORT (puts/sell): favor overbought RSI, low growth, negative momentum, high PE
+    df_scored = df.copy()
+    # Normalize each metric to 0-100 range
+    def normalize(series, invert=False):
+        s = pd.to_numeric(series, errors='coerce')
+        mn, mx = s.min(), s.max()
+        if mx == mn:
+            return pd.Series([50.0] * len(s), index=s.index)
+        norm = (s - mn) / (mx - mn) * 100
+        return 100 - norm if invert else norm
+    if direction == "long":
+        # Lower RSI = more oversold = better for calls
+        df_scored["score_rsi"] = normalize(df["RSI"], invert=True)
+        # Lower PE = cheaper = better for calls
+        df_scored["score_pe"] = normalize(df["PE Ratio"], invert=True)
+        # Higher EPS growth = better for calls
+        df_scored["score_eps"] = normalize(df["EPS Growth %"], invert=False)
+        # Higher momentum = trending up = better for calls
+        df_scored["score_mom"] = normalize(df["Momentum 3M %"], invert=False)
+        # Lower D/E = stronger balance sheet = better for calls
+        df_scored["score_de"] = normalize(df["D/E Ratio"], invert=True)
+    else:
+        # Higher RSI = more overbought = better for puts
+        df_scored["score_rsi"] = normalize(df["RSI"], invert=False)
+        # Higher PE = expensive = better for puts
+        df_scored["score_pe"] = normalize(df["PE Ratio"], invert=False)
+        # Lower/negative EPS growth = worse fundamentals = better for puts
+        df_scored["score_eps"] = normalize(df["EPS Growth %"], invert=True)
+        # Negative momentum = trending down = better for puts
+        df_scored["score_mom"] = normalize(df["Momentum 3M %"], invert=True)
+        # Higher D/E = weaker balance sheet = better for puts
+        df_scored["score_de"] = normalize(df["D/E Ratio"], invert=False)
+    # Weighted composite score
+    weights = {"score_rsi": 0.25, "score_pe": 0.20, "score_eps": 0.25,
+               "score_mom": 0.20, "score_de": 0.10}
+    df_scored["Composite Score"] = sum(
+        df_scored[col].fillna(50) * w for col, w in weights.items()
+    ).round(1)
+    # Return top 5
+    top5 = df_scored.nlargest(5, "Composite Score")[
+        ["Symbol", "Name", "RSI", "PE Ratio", "EPS Growth %",
+         "Momentum 3M %", "Momentum 12M %", "D/E Ratio", "Mkt Cap", "Composite Score"]
+    ].reset_index(drop=True)
+    return top5
+
+
+# -----------------------------------------------------------
+# UI RENDERING — DROP THIS INTO YOUR SECTORS TAB
+# -----------------------------------------------------------
+def render_sector_stock_picker(sector_pairs: list):
+    """
+    sector_pairs: list of dicts from your existing app, e.g.:
+    [
+      {"Pair": "Pair 1", "Long Sector": "Utilities", "Long ETF": "XLU",
+       "Short Sector": "Financials", "Short ETF": "XLF", ...},
+      ...
+    ]
+    """
+    st.markdown("---")
+    st.subheader("Top 5 Stock Picker by Sector")
+    st.caption("Click any sector name to see the top 5 ranked stocks for calls (long) or puts (short).")
+    # --- Build clickable table ---
+    for i, pair in enumerate(sector_pairs):
+        col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 1.5, 1, 1.5, 1])
+        col1.markdown(f"**{pair['Pair']}**")
+        # Long Sector button
+        if col2.button(f"[L] {pair['Long Sector']}", key=f"long_{i}"):
+            st.session_state["selected_sector"] = pair["Long Sector"]
+            st.session_state["selected_direction"] = "long"
+            st.session_state["selected_pair"] = pair["Pair"]
+        col3.markdown(f"`{pair['Long ETF']}`")
+        # Short Sector button
+        if col5.button(f"[S] {pair['Short Sector']}", key=f"short_{i}"):
+            st.session_state["selected_sector"] = pair["Short Sector"]
+            st.session_state["selected_direction"] = "short"
+            st.session_state["selected_pair"] = pair["Pair"]
+        col6.markdown(f"`{pair['Short ETF']}`")
+    # --- Modal Panel: show top 5 if a sector was clicked ---
+    if "selected_sector" in st.session_state:
+        sector = st.session_state["selected_sector"]
+        direction = st.session_state["selected_direction"]
+        pair_label = st.session_state["selected_pair"]
+        label = "LONG (Calls / Buy)" if direction == "long" else "SHORT (Puts / Sell)"
+        color = "green" if direction == "long" else "red"
+        st.markdown("---")
+        st.markdown(f"### :{color}[{sector}] — Top 5 Stocks for {label}")
+        st.caption(f"From {pair_label} | Ranked by composite score: RSI + PE + EPS Growth + Momentum + D/E")
+        with st.spinner(f"Fetching and ranking {sector} stocks..."):
+            top5_df = fetch_sector_top5(sector, direction)
+        if top5_df.empty:
+            st.warning(f"Could not retrieve data for {sector}. Try again shortly.")
+        else:
+            # Color-code the composite score
+            def highlight_score(val):
+                if val >= 70:
+                    return "background-color: #1a472a; color: white"
+                elif val >= 50:
+                    return "background-color: #2d4a1e; color: white"
+                else:
+                    return "background-color: #4a1e1e; color: white"
+            styled = top5_df.style \
+                .applymap(highlight_score, subset=["Composite Score"]) \
+                .format({
+                    "RSI": "{:.1f}",
+                    "PE Ratio": "{:.1f}",
+                    "EPS Growth %": "{:.1f}%",
+                    "Momentum 3M %": "{:.1f}%",
+                    "Momentum 12M %": "{:.1f}%",
+                    "D/E Ratio": "{:.2f}",
+                    "Composite Score": "{:.1f}",
+                }, na_rep="N/A")
+            st.dataframe(styled, use_container_width=True)
+            # Guidance notes
+            if direction == "long":
+                st.info(
+                    "**For Calls/Stocks**: Higher composite score = stronger buy candidate. "
+                    "Look for RSI < 50 (not overbought), positive EPS growth, and upward momentum."
+                )
+            else:
+                st.info(
+                    "**For Puts**: Higher composite score = stronger short candidate. "
+                    "Look for RSI > 60 (overbought), negative/weak EPS growth, and negative momentum."
+                )
+            # Download
+            csv = top5_df.to_csv(index=False)
+            st.download_button(
+                label=f"Download {sector} Top 5 CSV",
+                data=csv,
+                file_name=f"{sector.replace(' ', '_')}_{direction}_top5.csv",
+                mime="text/csv"
+            )
+        if st.button("Close Panel"):
+            del st.session_state["selected_sector"]
+            del st.session_state["selected_direction"]
+            st.rerun()
+
+
 # ============================================================================
 # STREAMLIT UI
 # ============================================================================
@@ -1777,6 +2005,7 @@ with tab2:
             if not tilt_df.empty:
                 st.dataframe(tilt_df, use_container_width=True)
                 st.download_button("📥 Download CSV", tilt_df.to_csv(index=False), "sectors.csv", "text/csv")
+                render_sector_stock_picker(tilt_df.to_dict('records'))
     else:
         st.info("Run Analysis first")
 
@@ -1807,6 +2036,3 @@ with tab3:
 
 st.markdown("---")
 st.caption("✅ Complete | 10Y Backtest | HTML Reports | Sector Tilt")
-
-
-
