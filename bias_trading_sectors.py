@@ -371,7 +371,6 @@ def fetch_data():
         history['core_cpi'] = pd.Series(
             [300.0 * (1 + 0.025 / 12) ** i for i in range(len(dr))], index=dr)
 
-    data['cpi_volatile'], history['cpi_volatile'] = safe_fred('CPIAUCSL', 300)
 
     # ── Conference Board LEI (USSLIND) — NEW ──────────────────────────────────
     try:
@@ -1968,7 +1967,7 @@ def render_sector_stock_picker(sector_pairs: list):
 
 st.set_page_config(page_title="Portfolio Bias & Sector Tilt", layout="wide")
 st.title("📊 Portfolio Bias & Sector Tilt Dashboard")
-
+st.caption("Data as of " + datetime.now().strftime("%Y-%m-%d %H:%M"))
 with st.sidebar:
     st.header("⚙️ Settings")
     portfolio_size = st.number_input("Portfolio Size ($)", min_value=10000, value=100000, step=10000)
@@ -2014,13 +2013,10 @@ with tab2:
     if 'metrics' in st.session_state:
         st.subheader("🎯 Sector Tilt Recommendations")
         with st.spinner("Computing sectors..."):
-            tilt_df, _ = generate_sector_tilt(
-                st.session_state.bias, st.session_state.score,
-                st.session_state.metrics['phase'], st.session_state.metrics['conviction'],
-                preferred_sectors, portfolio_size)
+            tilt_df, _ = generate_sector_tilt(...)
             if not tilt_df.empty:
                 st.dataframe(tilt_df, use_container_width=True)
-                st.download_button("📥 Download CSV", tilt_df.to_csv(index=False), "sectors.csv", "text/csv")
+                st.download_button(...)
                 render_sector_stock_picker(tilt_df.to_dict('records'))
     else:
         st.info("Run Analysis first")
