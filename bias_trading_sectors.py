@@ -1979,18 +1979,63 @@ tab1, tab2, tab3 = st.tabs(["📈 Analysis", "🎯 Sectors", "📊 Backtest"])
 
 with tab1:
     if st.button("🔄 Run Analysis", type="primary"):
-        with st.spinner("Fetching data..."):
+        with st.spinner("Fetching data and generating full report..."):
             try:
                 data, history, today = fetch_data()
                 metrics, tw, hw, nt, bias, score = calculate_metrics(data, history, today)
-                # ... your existing metric display and HTML report code unchanged
+
+                # Key metrics at the top
+                col1, col2, col3, col4 = st.columns(4)
+                with col1: 
+                    st.metric("GDP Growth Score", f"{score}/150")
+                with col2: 
+                    st.metric("Recommended Bias", bias.split('—')[0].strip())
+                with col3: 
+                    st.metric("Conviction", f"{metrics.get('conviction', 0):.0%}")
+                with col4: 
+                    st.metric("Cycle Phase", metrics.get('phase_label', 'N/A'))
+
+                st.divider()
+
+                # Quick summary lists
+                col_tw, col_hw = st.columns(2)
+                with col_tw:
+                    st.subheader(f"✅ Tailwinds ({len(tw)})")
+                    for t in tw[:8]:
+                        st.write(f"• {t}")
+                with col_hw:
+                    st.subheader(f"❌ Headwinds ({len(hw)})")
+                    for h in hw[:8]:
+                        st.write(f"• {h}")
+
+                # === FULL HTML REPORT ===
+                html_report = generate_html_summary(
+                    tw, hw, nt, bias, score,
+                    metrics.get('phase_label', 'N/A'),
+                    data, history, metrics, today
+                )
+
+                st.subheader("📄 Complete Portfolio Bias & Sector Tilt Report")
+                st.components.v1.html(html_report, height=1600, scrolling=True)
+
+                # Download button
+                st.download_button(
+                    label="📥 Download Full HTML Report",
+                    data=html_report,
+                    file_name=f"portfolio_bias_report_{today.strftime('%Y-%m-%d')}.html",
+                    mime="text/html"
+                )
+
+                # Save to session state for Sector tab
                 st.session_state.data = data
                 st.session_state.history = history
                 st.session_state.metrics = metrics
                 st.session_state.bias = bias
                 st.session_state.score = score
+
             except Exception as e:
                 st.error(f"Error: {e}")
+                st.error("Check your internet connection / FRED API key.")
 
 with tab2:
     if 'metrics' in st.session_state:
