@@ -402,11 +402,11 @@ def fetch_data():
     data['sbi'], history['sbi'] = _fallback(68.4)
     data['eesi'], history['eesi'] = _fallback(50.0)
 
-    # ── Earnings growth (S&P EPS) ─────────────────────────────────────────────
+        # ── Earnings growth (S&P EPS) ─────────────────────────────────────────────
     try:
-        sp_info      = yf.Ticker('^GSPC').info
+        sp_info = yf.Ticker('^GSPC').info
         trailing_eps = sp_info.get('trailingEps', None)
-        forward_eps  = sp_info.get('forwardEps',  None)
+        forward_eps = sp_info.get('forwardEps', None)
         if trailing_eps and forward_eps and trailing_eps != 0:
             data['earnings_growth'] = ((forward_eps - trailing_eps) /
                                         abs(trailing_eps)) * 100
@@ -414,12 +414,13 @@ def fetch_data():
             data['earnings_growth'] = 5.0
         dr = pd.date_range(end=today, periods=40, freq='QE')
         history['earnings_growth'] = pd.Series(
-            np.random.normal(data['earnings_growth'], 3, 40), index=dr)
+            np.random.normal(data['earnings_growth'], 3, len(dr)), index=dr)
     except Exception:
         data['earnings_growth'] = 5.0
+        # Safe fallback — always match length
         dr = pd.date_range(end=today, periods=40, freq='QE')
         history['earnings_growth'] = pd.Series(
-            np.random.normal(5.0, 3, 40), index=dr)
+            np.random.normal(5.0, 3, len(dr)), index=dr)
 
     # ── Yahoo Finance helpers ─────────────────────────────────────────────────
     def get_yf(ticker, default_val, default_std, period='1y'):
