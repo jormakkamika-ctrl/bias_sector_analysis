@@ -296,16 +296,22 @@ def _compute_cpi_yoy(history):
         return pd.Series(dtype=float)
     return ((cpi / cpi.shift(12)) - 1) * 100
 
-
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0).rolling(window=period).mean()
+    loss = -delta.where(delta < 0, 0).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 # ============================================================================
 # DATA FETCHING
 # ============================================================================
 
 @st.cache_data(ttl=3600)
 def fetch_data():
-    data    = {}
+    data = {}
     history = {}
-    today   = datetime.now()
+    today = datetime.now()
 
     def safe_fred(series_id, default_value=0):
         try:
@@ -315,10 +321,11 @@ def fetch_data():
             s = normalize_index(s)
             return float(s.iloc[-1]), s
         except Exception:
-            dr       = pd.date_range(end=today, periods=48, freq='ME')
+            # FIXED: create index first, then use its actual length
+            dr = pd.date_range(end=today, periods=48, freq='ME')
             fallback = pd.Series(
                 np.random.normal(default_value,
-                                 max(abs(default_value) * 0.05, 0.01), 48),
+                                 max(abs(default_value) * 0.05, 0.01), len(dr)),
                 index=dr)
             return default_value, fallback
 
@@ -350,18 +357,19 @@ def fetch_data():
     data['building_permits']    = data['building_permits_raw'] / 1000.0
 
     # ── Core CPI ──────────────────────────────────────────────────────────────
+    # Core CPI fallback
     try:
         core = fred.get_series('CPILFESL', observation_start='2010-01-01')
         core = normalize_index(core)
         if len(core) < 14:
             raise ValueError("Not enough")
         data['core_cpi_yoy'] = ((core.iloc[-1] / core.iloc[-13]) - 1) * 100
-        history['core_cpi']  = core
+        history['core_cpi'] = core
     except Exception:
         data['core_cpi_yoy'] = 2.5
         dr = pd.date_range(end=today, periods=60, freq='ME')
         history['core_cpi'] = pd.Series(
-            [300.0 * (1 + 0.025 / 12) ** i for i in range(60)], index=dr)
+            [300.0 * (1 + 0.025 / 12) ** i for i in range(len(dr))], index=dr)
 
     data['cpi_volatile'], history['cpi_volatile'] = safe_fred('CPIAUCSL', 300)
 
@@ -381,10 +389,11 @@ def fetch_data():
             data['lei_chg_3m'] = 0.0
     except Exception:
         dr = pd.date_range(end=today, periods=60, freq='ME')
-        history['lei']     = pd.Series(np.full(60, 100.0), index=dr)
-        data['lei']        = 100.0
+        history['lei'] = pd.Series(np.full(len(dr), 100.0), index=dr)
+        data['lei'] = 100.0
         data['lei_chg_3m'] = 0.0
 
+    
     # ── Fallback series ───────────────────────────────────────────────────────
     def _fallback(default, num_months=24):
         dr = pd.date_range(end=today, periods=num_months, freq='ME')
